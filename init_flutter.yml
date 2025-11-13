@@ -1,0 +1,30 @@
+name: Init Flutter 1.22.6 Project
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Instala Flutter 1.22.6
+      - name: Install Flutter 1.22.6
+        run: |
+          git clone https://github.com/flutter/flutter.git -b 1.22.6
+          echo "$GITHUB_WORKSPACE/flutter/bin" >> $GITHUB_PATH
+          flutter doctor
+
+      # Crea el proyecto
+      - name: Create Flutter project
+        run: |
+          flutter create my_app
+          mv my_app/* .
+          rm -rf my_app
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add .
+          git commit -m "Initialize Flutter 1.22.6 project"
+          git push
