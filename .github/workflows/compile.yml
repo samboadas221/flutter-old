@@ -1,0 +1,33 @@
+
+name: Build APK Flutter 1.22.6
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Flutter 1.22.6
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "1.22.6"
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK (Android 4.x)
+        run: flutter build apk --target-platform android-arm
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
