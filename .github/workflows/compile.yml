@@ -29,6 +29,13 @@ jobs:
           distribution: 'temurin'
           java-version: '8'
 
+      - name: Install NDK 21e
+        run: |
+          echo "y" | sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;21.4.7075529"
+
+      - name: Set NDK path
+        run: echo "ndk.dir=${ANDROID_HOME}/ndk/21.4.7075529" >> android/local.properties
+
       - name: Build APK (Android 4.x)
         run: flutter build apk --target-platform android-arm
 
