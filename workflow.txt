@@ -1,0 +1,78 @@
+
+  Métricas / estadísticas adicionales:
+
+  Mejor tiempo por dificultad
+  Promedio de movimientos por puzzle
+  Porcentaje de puzzles resueltos (resueltos / iniciados).
+  Hints usados total y por nivel.
+  Racha de victorias (número de puzzles seguidos resueltos)
+
+
+  FASES DE CREACIÒN:
+    Fase 0 — Preparación
+
+      1. Selección de dependencias compatibles con Flutter 1.22 (lista de paquetes y versiones).
+
+      2. Crear repositorio y estructura de carpetas (esqueleto sin lógica). Entregable: lista pubspec.yaml y estructura.
+
+
+    Fase 1 — UI básico y navegación
+
+      1. main.dart, home_screen.dart, stats_screen.dart.
+
+      2. Mock de botones de dificultad y navegación hacia pantalla de juego (vacía). Entregable: app que muestra pantallas y botones (sin juego).
+
+
+    Fase 2 — Modelo de datos y persistencia
+
+      1. Implementar puzzle_model.dart y storage_manager.dart.
+
+      2. Implementar lectura/escritura de estadísticas (SharedPreferences) y guardado de puzzles en JSON. Entregable: API local que guarda/lee stats y devuelve plantillas.
+
+
+    Fase 3 — Tablero y widgets interactivos
+
+      1. board_widget.dart, cell_widget.dart, bank_widget.dart.
+
+      2. Implementar drag & drop (Draggable/DragTarget) y estados visuales (highlight). Entregable: UI interactiva con fichas movibles, sin reglas aplicadas.
+
+
+    Fase 4 — Reglas y validación
+
+      1. rules.dart: evaluación de líneas y validación por dificultad (bounds).
+
+      2. solver.dart funciones de comprobación.
+
+      3. Feedback visual (líneas correctas/inválidas). Entregable: Al colocar ficha, la app valida la línea y marca si es correcta.
+
+
+    Fase 5 — Generador de puzzles
+
+      1. generator.dart con algoritmo backtracking que genera puzzles por dificultad.
+
+      2. Garantizar que las soluciones cumplan con límites (max 30/60/100).
+
+      3. Opcional: control de unicidad (contador de soluciones). Entregable: Generador que produce puzzles jugables.
+
+
+    Fase 6 — Integración completa & UX
+
+      1. Botones Undo, Hint, Reset.
+
+      2. Guardado automático de progreso.
+
+      3. Pantalla de victoria y estadísticas actualizadas. Entregable: Juego funcional completo.
+
+
+    Fase 7 — Testing & CI
+
+      1. Tests unitarios para generator/solver/rules.
+
+      2. Workflow de compilación en GitHub Actions (ya tienes experiencia). Entregable: Tests y pipeline que compila APK.
+
+
+    Fase 8 — Optimización y empaquetado
+
+      1. Preparar iconos, assets, configuración AndroidManifest (minSdkVersion 16) y build.gradle.
+
+      2. Generar APK release compatible con Android 4.1. Entregable: APK release listo
