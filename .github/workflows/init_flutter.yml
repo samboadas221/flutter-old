@@ -25,8 +25,12 @@ jobs:
           flutter create my_app
           mv my_app/* .
           rm -rf my_app
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
           git add .
-          git commit -m "Initialize Flutter 1.22.6 project"
-          git push
+          git commit -m "Initialize Flutter 1.22.6 project" || true
+
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+
+          git push origin HEAD:main
