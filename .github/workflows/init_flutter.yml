@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-       - name: Install Flutter 1.22.6
+      - name: Install Flutter 1.22.6
          run: |
            git clone https://github.com/flutter/flutter.git -b 1.22.6
            echo "$PWD/flutter/bin" >> $GITHUB_PATH
