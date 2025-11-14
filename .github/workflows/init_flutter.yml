@@ -1,7 +1,9 @@
-
 name: Init Flutter 1.22.6 Project
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
