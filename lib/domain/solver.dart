@@ -26,7 +26,7 @@ class Solver {
     final List<Puzzle> solutions = <Puzzle>[];
     final toFill = _collectEmptyNumberCoords(puzzle);
     // Prepare initial bank (clone)
-    final Map<int, int> bankCounts = Map<int, int>.from(puzzle.bank._counts);
+    final Map<int, int> bankCounts = Map<int, int>.from(puzzle.bank.counts);
 
     void backtrack(int idx) {
       if (solutions.length >= maxSolutions) return;

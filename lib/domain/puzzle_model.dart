@@ -141,6 +141,8 @@ class Bank {
     });
     return out;
   }
+  
+  Map<int, int> get counts => Map.unmodifiable(_counts);
 
   bool contains(int value) => (_counts[value] ?? 0) > 0;
   int count(int value) => _counts[value] ?? 0;
