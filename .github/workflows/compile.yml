@@ -23,6 +23,12 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Set up Java 8
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+
       - name: Build APK (Android 4.x)
         run: flutter build apk --target-platform android-arm
 
