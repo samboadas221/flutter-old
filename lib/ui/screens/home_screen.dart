@@ -18,16 +18,13 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('CrossMath')),
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            SizedBox(height: 24.0),
-            Text('Elige dificultad', style: TextStyle(fontSize: 20.0)),
             SizedBox(height: 12.0),
-            _bigButton(context, 'Fácil', Colors.green),
-            _bigButton(context, 'Medio', Colors.orange),
-            _bigButton(context, 'Difícil', Colors.red),
+            _bigButton(context, 'FÁCIL', Colors.green),
+            _bigButton(context, 'MEDIO', Colors.orange),
+            _bigButton(context, 'DIFÍCIL', Colors.red),
             Expanded(child: Container()), // pushes stats button to bottom
             Container(
               alignment: Alignment.centerRight,
