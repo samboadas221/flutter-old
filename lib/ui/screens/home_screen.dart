@@ -27,15 +27,15 @@ class HomeScreen extends StatelessWidget {
           children: <Widget>[
             SizedBox(height: 12.0),
             
-            _bigButton(context, 'Fácil', Colors.green, () {
+            _bigButton(context, 'FÁCIL', Colors.green, () {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameScreen(difficulty: Difficulty.easy)));
             }),
             
-            _bigButton(context, 'Medio', Colors.orange, () {
+            _bigButton(context, 'MEDIO', Colors.orange, () {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameScreen(difficulty: Difficulty.medium)));
             }),
             
-            _bigButton(context, 'Difícil', Colors.red, () {
+            _bigButton(context, 'DIFÍCIL', Colors.red, () {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameScreen(difficulty: Difficulty.hard)));
             }),
             
