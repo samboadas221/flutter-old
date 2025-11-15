@@ -3,6 +3,7 @@
 // Compatible with Flutter 1.22 (no null-safety)
 
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../domain/puzzle_model.dart';
@@ -69,16 +70,37 @@ class _GameScreenState extends State<GameScreen> {
         if (stored != null) {
           _puzzle = stored;
         } else {
+          
           final templates = await StorageManager.listAllSavedPuzzles();
           if (templates != null && templates.isNotEmpty) {
-            // choose a random template matching difficulty if possible
             final matching = templates.where((p) => p.difficulty == widget.difficulty).toList();
             _puzzle = (matching.isNotEmpty ? matching.first : templates.first).copy();
           } else {
-            // no templates available: try to generate from current (requires skeleton)
-            // fallback: throw descriptive error
-            throw Exception('No puzzle available. Import or create a template first.');
+            // Try loading bundled templates from assets (hybrid approach)
+            List<Puzzle> assetTemplates = [];
+            final difficulty = widget.difficulty ?? Difficulty.easy;
+            try {
+              if (difficulty == Difficulty.easy) {
+                assetTemplates = await Generator.loadTemplatesFromAsset('assets/puzzles/easy_templates.json');
+              } else if (difficulty == Difficulty.medium) {
+                assetTemplates = await Generator.loadTemplatesFromAsset('assets/puzzles/medium_templates.json');
+              } else {
+                assetTemplates = await Generator.loadTemplatesFromAsset('assets/puzzles/hard_templates.json');
+              }
+            } catch (e) {
+              assetTemplates = [];
+            }
+          
+            if (assetTemplates != null && assetTemplates.isNotEmpty) {
+              // Choose random template then run generator to vary it (hybrid)
+              final tpl = assetTemplates[Random().nextInt(assetTemplates.length)].copy();
+              // Use the generator to produce a puzzle variant from the template skeleton
+              _puzzle = Generator.generateFromSkeleton(tpl, difficulty: difficulty, requireUnique: false, cluePercent: 40);
+            } else {
+              throw Exception('No puzzle available. Import or create a template first.');
+            }
           }
+          
         }
       }
 

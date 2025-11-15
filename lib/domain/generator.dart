@@ -2,6 +2,9 @@
 // lib/domain/generator.dart
 // Compatible with Flutter 1.22 (no null-safety)
 
+import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
+
 import 'dart:math';
 import 'puzzle_model.dart';
 import 'rules.dart';
@@ -170,4 +173,26 @@ class Generator {
 
     return outPuzzle;
   }
+  
+  
+  /// Carga un array de plantillas desde un asset JSON (lista de Puzzle JSONs).
+  static Future<List<Puzzle>> loadTemplatesFromAsset(String assetPath) async {
+    try {
+      final s = await rootBundle.loadString(assetPath);
+      final List items = json.decode(s);
+      final List<Puzzle> out = [];
+      for (var it in items) {
+        try {
+          final p = Puzzle.fromJson(Map<String, dynamic>.from(it));
+          out.add(p);
+        } catch (e) {
+          // skip invalid template
+        }
+      }
+      return out;
+    } catch (e) {
+      return <Puzzle>[];
+    }
+  }
+  
 }
