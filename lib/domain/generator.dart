@@ -72,13 +72,16 @@ class Generator {
       bool ok = true;
       for (var l in filledPuzzle.lines) {
         try {
+          
           final val = evaluateLine(filledPuzzle, l);
-          // enforce bounds
-          if (!_inBounds(val, difficulty)) {
+          // enforce bounds (no negativos y <= max por dificultad)
+          final int maxv = maxForDifficulty(difficulty);
+          if (val < 0 || val > maxv) {
             ok = false;
             break;
           }
           l.target = val;
+          
         } catch (e) {
           ok = false;
           break;
