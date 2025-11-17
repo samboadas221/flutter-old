@@ -1,19 +1,20 @@
 
 // lib/ui/widgets/board_widget.dart
-// Compatible with Flutter 1.22 (no null-safety)
+// Reescrito para MatrixPuzzle - Flutter 1.22 (no null-safety)
 
 import 'package:flutter/material.dart';
-import '../../domain/puzzle_model.dart';
-import '../../domain/rules.dart';
+import '../../domain/matrix_puzzle.dart';
+import '../../domain/matrix_solver.dart';
+import '../../domain/cell.dart';
 import 'cell_widget.dart';
 import 'drag_handlers.dart';
 
-typedef PlaceCallback = void Function(Coord to, int value, String source);
-typedef SwapCallback = void Function(Coord from, Coord to);
-typedef TapCallback = void Function(Coord pos);
+typedef PlaceCallback = void Function(int row, int col, int value, String source);
+typedef SwapCallback = void Function(int fromRow, int fromCol, int toRow, int toCol);
+typedef TapCallback = void Function(int row, int col);
 
 class BoardWidget extends StatelessWidget {
-  final Puzzle puzzle;
+  final MatrixPuzzle puzzle;
   final double cellSize;
   final PlaceCallback onPlace;
   final SwapCallback onSwap;
@@ -30,100 +31,171 @@ class BoardWidget extends StatelessWidget {
     this.padding = const EdgeInsets.all(8.0),
   }) : super(key: key);
 
-  // compute a set of coords that belong to correct lines, used to highlight
-  Set<Coord> _computeCorrectCoords() {
-    final Map<String, bool> lineStatus = validateAllLines(puzzle);
-    final correctLines = puzzle.lines.where((l) => lineStatus[l.id] == true);
-    final set = Set<Coord>();
-    for (var l in correctLines) {
-      set.addAll(l.operandCoords);
-      set.add(l.operatorCoord);
-      set.add(l.equalsCoord);
+  /// Highlight opcional: destaca únicamente celdas que pertenecen
+  /// a ecuaciones correctas (muy simple: la ecuación completa es correcta).
+  Set<String> _computeCorrectCellKeys() {
+    final correct = Set<String>();
+
+    // Revisar ecuaciones horizontales
+    for (int r = 0; r < puzzle.rows; r++) {
+      for (int c = 0; c <= puzzle.cols - 5; c++) {
+        if (_isEquationAt(r, c, true)) {
+          if (MatrixSolver._checkEquation(puzzle, r, c, true)) {
+            for (int k = 0; k < 5; k++) {
+              correct.add("${r}_${c + k}");
+            }
+          }
+        }
+      }
     }
-    return set;
+
+    // Revisar ecuaciones verticales
+    for (int c = 0; c < puzzle.cols; c++) {
+      for (int r = 0; r <= puzzle.rows - 5; r++) {
+        if (_isEquationAt(r, c, false)) {
+          if (MatrixSolver._checkEquation(puzzle, r, c, false)) {
+            for (int k = 0; k < 5; k++) {
+              correct.add("${r + k}_${c}");
+            }
+          }
+        }
+      }
+    }
+
+    return correct;
   }
 
-  Widget _buildCell(BuildContext context, int r, int c, Set<Coord> correctCoords) {
-    final coord = Coord(r, c);
-    final cell = puzzle.cells[coord];
-    if (cell == null) {
-      return SizedBox(width: cellSize, height: cellSize);
+  bool _isEquationAt(int r, int c, bool horizontal) {
+    // Copiado de MatrixSolver._isEquationAt pero inline para highlight
+    int r0 = r;
+    int c0 = c;
+
+    int dr = horizontal ? 0 : 1;
+    int dc = horizontal ? 1 : 0;
+
+    Coord a  = Coord(r0 + 0 * dr, c0 + 0 * dc);
+    Coord op = Coord(r0 + 1 * dr, c0 + 1 * dc);
+    Coord b  = Coord(r0 + 2 * dr, c0 + 2 * dc);
+    Coord eq = Coord(r0 + 3 * dr, c0 + 3 * dc);
+    Coord rs = Coord(r0 + 4 * dr, c0 + 4 * dc);
+
+    if (!puzzle.inBounds(a.r, a.c)) return false;
+    if (!puzzle.inBounds(rs.r, rs.c)) return false;
+
+    Cell ca = puzzle.grid[a.r][a.c];
+    Cell cop = puzzle.grid[op.r][op.c];
+    Cell cb = puzzle.grid[b.r][b.c];
+    Cell ceq = puzzle.grid[eq.r][eq.c];
+    Cell cres = puzzle.grid[rs.r][rs.c];
+
+    return ca.type == CellType.number &&
+        cop.type == CellType.operator &&
+        cb.type == CellType.number &&
+        ceq.type == CellType.equals &&
+        cres.type == CellType.result;
+  }
+
+  Widget _buildCell(BuildContext context, int r, int c, Set<String> correctKeys) {
+    final cell = puzzle.grid[r][c];
+    final key = "${r}_${c}";
+    final highlight = correctKeys.contains(key);
+
+    // 1) Celdas NUMBER no fijas → Draggable
+    if (cell.type == CellType.number && cell.value == null && cell.number == null) {
+      // celda vacía, drop target
+      return _buildDropTarget(r, c, cell, highlight);
     }
 
-    final bool highlight = correctCoords.contains(coord);
-
-    // If it's a number cell and has a non-fixed placed value, make it draggable (to allow swaps)
-    if (cell.isNumber && cell.value != null && !cell.fixed) {
-      final childWidget = CellWidget(cell: cell, highlight: highlight, onTap: (pos) {
-        if (onTap != null) onTap(pos);
-      }, size: cellSize);
+    if (cell.type == CellType.number && cell.number != null && !cell.fixed) {
+      // celda con número colocado por jugador → draggable
+      final widget = CellWidget(
+        cell: cell,
+        size: cellSize,
+        highlight: highlight,
+        onTap: (_) {
+          if (onTap != null) onTap(r, c);
+        },
+      );
 
       return DraggableNumber(
-        value: cell.value as int,
-        sourceId: 'board:${r}:${c}',
-        child: childWidget,
+        value: cell.number,
+        sourceId: "board:$r:$c",
+        child: widget,
         feedback: Material(
           color: Colors.transparent,
           child: Container(
             width: cellSize,
             height: cellSize,
             alignment: Alignment.center,
-            child: childWidget,
+            child: widget,
           ),
         ),
       );
     }
 
-    // otherwise a drop target (also for operator/target cells we keep non-accepting)
+    // 2) Celdas NUMÉRICAS fijas → no draggable
+    if (cell.type == CellType.number && cell.fixed) {
+      return _fixedNumber(r, c, cell, highlight);
+    }
+
+    // 3) Operadores / igual / resultado → widgets normales (algunos aceptan drops)
+    if (cell.type == CellType.operator ||
+        cell.type == CellType.equals ||
+        cell.type == CellType.result) {
+      return _buildDropTarget(r, c, cell, highlight);
+    }
+
+    return SizedBox(width: cellSize, height: cellSize);
+  }
+
+  Widget _fixedNumber(int r, int c, Cell cell, bool highlight) {
+    return Container(
+      width: cellSize,
+      height: cellSize,
+      child: CellWidget(
+        cell: cell,
+        size: cellSize,
+        highlight: highlight,
+        onTap: (_) {
+          if (onTap != null) onTap(r, c);
+        },
+      ),
+    );
+  }
+
+  /// Construye un drop target para celdas donde se puede colocar un número.
+  Widget _buildDropTarget(int r, int c, Cell cell, bool highlight) {
     return GenericDropTarget(
-      builder: (ctx, candidateData, rejected) {
-        final showCandidate = candidateData != null && candidateData.isNotEmpty;
+      builder: (ctx, candidate, rejected) {
+        bool candidateHighlight = candidate != null && candidate.isNotEmpty;
         return Container(
           width: cellSize,
           height: cellSize,
           child: CellWidget(
             cell: cell,
-            highlight: highlight || showCandidate,
-            onTap: (pos) {
-              if (onTap != null) onTap(pos);
-            },
             size: cellSize,
+            highlight: highlight || candidateHighlight,
+            onTap: (_) {
+              if (onTap != null) onTap(r, c);
+            },
           ),
         );
       },
       onWillAccept: (payload) {
-        // only number cells accept drops
-        if (cell == null) return false;
-        if (!cell.isNumber) return false;
-        // if fixed cannot accept
         if (cell.fixed) return false;
-        // if payload from board and same coord -> reject
-        if (payload.source != null && payload.source.startsWith('board:')) {
-          final parts = payload.source.split(':');
-          if (parts.length >= 3) {
-            final or = int.parse(parts[1]);
-            final oc = int.parse(parts[2]);
-            if (or == r && oc == c) return false;
-          }
-        }
-        // check immediate feasibility using rules.canPlaceNumber (light check)
-        // create a temp copy of puzzle to test placement
-        final temp = puzzle.copy();
-        if (temp.cells[coord] == null) return false;
-        temp.cells[coord].value = payload.value;
-        final ok = canPlaceNumber(temp, coord, payload.value);
-        return ok;
+        if (cell.type != CellType.number && cell.type != CellType.result) return false;
+        return true;
       },
       onAccept: (payload) {
-        final src = payload.source ?? 'bank';
-        if (src.startsWith('board:')) {
-          final parts = src.split(':');
-          final fr = int.parse(parts[1]);
-          final fc = int.parse(parts[2]);
-          final from = Coord(fr, fc);
-          if (onSwap != null) onSwap(from, coord);
+        final src = payload.source ?? "bank";
+
+        if (src.startsWith("board:")) {
+          final parts = src.split(":");
+          int fr = int.parse(parts[1]);
+          int fc = int.parse(parts[2]);
+          if (onSwap != null) onSwap(fr, fc, r, c);
         } else {
-          if (onPlace != null) onPlace(coord, payload.value, src);
+          if (onPlace != null) onPlace(r, c, payload.value, src);
         }
       },
     );
@@ -131,19 +203,17 @@ class BoardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = puzzle.rows;
-    final cols = puzzle.cols;
-    final correctCoords = _computeCorrectCoords();
+    final correctKeys = _computeCorrectCellKeys();
 
     return Padding(
       padding: padding,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: List.generate(rows, (r) {
+        children: List.generate(puzzle.rows, (r) {
           return Row(
             mainAxisSize: MainAxisSize.min,
-            children: List.generate(cols, (c) {
-              return _buildCell(context, r, c, correctCoords);
+            children: List.generate(puzzle.cols, (c) {
+              return _buildCell(context, r, c, correctKeys);
             }),
           );
         }),
