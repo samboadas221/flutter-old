@@ -6,17 +6,17 @@ import 'matrix_puzzle.dart';
 import 'cell.dart';
 
 class MatrixSolver {
-  /// Retorna true si todas las ecuaciones del puzzle están completas y correctas.
   static bool isSolved(MatrixPuzzle p) {
     return _allEquationsValid(p) && _noHoles(p);
   }
 
-  /// Revisa si hay celdas numéricas requeridas pero vacías.
   static bool _noHoles(MatrixPuzzle p) {
     for (int r = 0; r < p.rows; r++) {
       for (int c = 0; c < p.cols; c++) {
         final cell = p.grid[r][c];
-        if (cell.type == CellType.number || cell.type == CellType.result) {
+
+        if (cell.type == CellType.number ||
+            cell.type == CellType.result) {
           if (cell.number == null) return false;
         }
       }
@@ -24,7 +24,6 @@ class MatrixSolver {
     return true;
   }
 
-  /// Valida todas las ecuaciones horizontales y verticales.
   static bool _allEquationsValid(MatrixPuzzle p) {
     // horizontales
     for (int r = 0; r < p.rows; r++) {
@@ -81,7 +80,8 @@ class MatrixSolver {
     final cb = p.grid[b.r][b.c];
     final cres = p.grid[rs.r][rs.c];
 
-    if (ca.number == null || cb.number == null || cres.number == null) return false;
+    if (ca.number == null || cb.number == null || cres.number == null)
+      return false;
 
     final A = ca.number;
     final B = cb.number;
