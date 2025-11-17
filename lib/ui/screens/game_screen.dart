@@ -11,6 +11,12 @@ import '../widgets/board_widget.dart';
 import '../widgets/bank_widget.dart';
 import '../widgets/hud.dart';
 
+import '../../domain/puzzle_model.dart';   // Para Puzzle, Coord, Difficulty, Bank
+import '../../domain/rules.dart';          // Para canPlaceNumber si se usa
+import '../../domain/solver.dart';         // Para Solver
+import '../../domain/generator.dart';      // Para Generator
+import '../../data/storage_manager.dart';  // Para StorageManager
+
 class _ActionRecord {
   final Coord coord;
   final int previousValue;

@@ -9,6 +9,11 @@ import '../../domain/cell.dart';
 import 'cell_widget.dart';
 import 'drag_handlers.dart';
 
+/*
+import '../../domain/puzzle_model.dart';   // Puzzle, Coord
+import '../../domain/rules.dart';          // canPlaceNumber
+*/
+
 typedef PlaceCallback = void Function(int row, int col, int value, String source);
 typedef SwapCallback = void Function(int fromRow, int fromCol, int toRow, int toCol);
 typedef TapCallback = void Function(int row, int col);

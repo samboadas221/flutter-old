@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'drag_handlers.dart';
+import '../../domain/puzzle_model.dart';   // Bank
 
 typedef OnTileDragStarted = void Function(int value);
 typedef OnTileDragCompleted = void Function(int value);
