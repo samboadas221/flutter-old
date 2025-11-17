@@ -3,7 +3,6 @@
 // Compatible with Flutter 1.22 (no null-safety)
 
 import 'package:flutter/material.dart';
-import '../../domain/puzzle_model.dart';
 
 typedef CellDropCallback = void Function(Coord pos, int value);
 typedef CellTapCallback = void Function(Coord pos);

@@ -6,12 +6,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 
-import '../../domain/puzzle_model.dart';
-import '../../domain/generator.dart';
-import '../../domain/solver.dart';
-import '../../domain/rules.dart';
 import '../../data/storage_manager.dart';
-import '../../data/json_formats.dart';
 import '../widgets/board_widget.dart';
 import '../widgets/bank_widget.dart';
 import '../widgets/hud.dart';

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'game_screen.dart';
 import 'stats_screen.dart';
-import '../../domain/puzzle_model.dart'; // para Difficulty
 
 class HomeScreen extends StatelessWidget {
   
