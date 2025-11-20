@@ -1,8 +1,4 @@
 
-// lib/domain/matrix_generator.dart
-// GENERADOR CROSSMATH PROFESIONAL - V10 FINAL - 20 Nov 2025
-// Para tu madre, con amor infinito ❤️
-
 import 'dart:math';
 import 'matrix_puzzle.dart';
 import 'cell.dart';
@@ -16,32 +12,45 @@ class MatrixGenerator {
     int maxSize = 12,
     int cluePercent = 42,
   }) {
-    final size = minSize + _rnd.nextInt(maxSize - minSize + 1);
-    final maxVal = difficulty == 'easy' ? 29 : difficulty == 'medium' ? 59 : 99;
+    final int size = minSize + _rnd.nextInt(maxSize - minSize + 1);
+    final int maxVal = difficulty == 'easy'
+        ? 29
+        : difficulty == 'medium'
+            ? 59
+            : 99;
 
-    outer: while (true) {
-      final puzzle = MatrixPuzzle(size, size, difficulty: difficulty);
+    outerLoop:
+    while (true) {
+      final MatrixPuzzle puzzle = MatrixPuzzle(size, size, difficulty: difficulty);
 
-      // Usamos una máscara para evitar cualquier solapamiento
+      // Máscara de celdas usadas (evita cualquier solapamiento)
       final List<List<bool>> used = List.generate(size, (_) => List.filled(size, false));
 
       final List<_Equation> equations = [];
 
-      // Colocamos primera ecuación en el centro
-      bool firstH = _rnd.nextBool();
-      int r = 2 + _rnd.nextInt(size - 6);
-      int c = 2 + _rnd.nextInt(size - 6);
-      if (_placeEquationSafe(puzzle, used, true, r, c, maxVal, difficulty)) {
-        equations.add(_Equation(true, r, c));
-      } else continue;
+      // Primera ecuación en posición segura
+      final bool firstHorizontal = _rnd.nextBool();
+      final int startR = 2 + _rnd.nextInt(size - 6);
+      final int startC = 2 + _rnd.nextInt(size - 6);
 
-      // Crecemos añadiendo ecuaciones que se crucen con las existentes
-      for (int i = 0; i < 800; i++) {
-        final candidate = _findGoodCrossingPosition(equations, size, used);
+      if (!_placeEquationSafe(puzzle, used, firstHorizontal, startR, startC, maxVal, difficulty)) {
+        continue outerLoop;
+      }
+      equations.add(_Equation(firstHorizontal, startR, startC));
+
+      // Añadimos ecuaciones que crucen correctamente con las existentes
+      for (int attempts = 0; attempts < 1000; attempts++) {
+        final _Equation candidate = _findValidCrossing(equations, size, used);
         if (candidate == null) break;
 
-        final placed = _placeEquationSafe(
-          puzzle, used, candidate.horizontal, candidate.row, candidate.col, maxVal, difficulty
+        final bool placed = _placeEquationSafe(
+          puzzle,
+          used,
+          candidate.horizontal,
+          candidate.row,
+          candidate.col,
+          maxVal,
+          difficulty,
         );
 
         if (placed) {
@@ -49,187 +58,210 @@ class MatrixGenerator {
         }
       }
 
-      if (equations.length < 7) continue outer;
+      // Mínimo 7-8 ecuaciones para un buen puzzle
+      if (equations.length < 7) continue outerLoop;
 
-      // Garantizamos pistas mínimas por ecuación
-      if (_finalizeWithMinClues(puzzle, cluePercent, equations)) {
+      // Finalizamos con pistas mínimas por ecuación
+      if (_finalizeWithGuaranteedClues(puzzle, cluePercent, equations)) {
         return puzzle;
       }
     }
   }
 
-  // Coloca una ecuación SIN SOLAPAR NADA y marcando celdas usadas
-  static bool _placeEquationSafe(MatrixPuzzle p, List<List<bool>> used,
-      bool horizontal, int startR, int startC, int maxVal, String diff) {
+  // Coloca una ecuación SIN solapar NADA y respetando distancias
+  static bool _placeEquationSafe(
+    MatrixPuzzle p,
+    List<List<bool>> used,
+    bool horizontal,
+    int r,
+    int c,
+    int maxVal,
+    String diff,
+  ) {
+    // Verificar límites
+    if (horizontal && c + 4 >= p.cols) return false;
+    if (!horizontal && r + 4 >= p.rows) return false;
 
-    final coords = horizontal
-        ? [Coord(startR, startC + i) for i in 0 until 5]
-        : [Coord(startR + i, startC) for i in 0 until 5];
+    // Verificar que ninguna celda esté usada o demasiado cerca (excepto cruce válido)
+    for (int i = 0; i < 5; i++) {
+      final int cr = horizontal ? r : r + i;
+      final int cc = horizontal ? c + i : c;
+      if (used[cr][cc]) return false;
 
-    // Verifica no solapamiento
-    for (final coord in coords) {
-      if (!p.inBounds(coord.r, coord.c) || used[coord.r][coord.c]) return false;
+      // Separación mínima de 1 celda con cualquier cosa que no sea cruce real
+      for (int dr = -1; dr <= 1; dr++) {
+        for (int dc = -1; dc <= 1; dc++) {
+          if (dr == 0 && dc == 0) continue;
+          final int nr = cr + dr;
+          final int nc = cc + dc;
+          if (nr >= 0 && nr < p.rows && nc >= 0 && nc < p.cols && used[nr][nc]) {
+            return false; // demasiado cerca
+          }
+        }
+      }
     }
 
-    final data = _makeNiceEquation(maxVal, diff) ;
-    if (data == null) return false;
+    final List equation = _generatePerfectEquation(maxVal, diff);
+    if (equation == null) return false;
 
-    final A = data[0]; final op = data[1]; final B = data[2]; final C = data[3];
+    final int A = equation[0];
+    final String op = equation[1];
+    final int B = equation[2];
+    final int C = equation[3];
 
     if (horizontal) {
-      p.grid[startR][startC]     = Cell.number(A, fixed: false);
-      p.grid[startR][startC+1]   = Cell.operator(op);
-      p.grid[startR][startC+2]   = Cell.number(B, fixed: false);
-      p.grid[startR][startC+3]   = Cell.equals();
-      p.grid[startR][startC+4]   = Cell.result(C, fixed: false);
+      p.grid[r][c]     = Cell.number(A, fixed: false);
+      p.grid[r][c + 1] = Cell.operator(op);
+      p.grid[r][c + 2] = Cell.number(B, fixed: false);
+      p.grid[r][c + 3] = Cell.equals();
+      p.grid[r][c + 4] = Cell.result(C, fixed: false);
     } else {
-      p.grid[startR][startC]     = Cell.number(A, fixed: false);
-      p.grid[startR+1][startC]   = Cell.operator(op);
-      p.grid[startR+2][startC]   = Cell.number(B, fixed: false);
-      p.grid[startR+3][startC]   = Cell.equals();
-      p.grid[startR+4][startC]   = Cell.result(C, fixed: false);
+      p.grid[r][c]     = Cell.number(A, fixed: false);
+      p.grid[r + 1][c] = Cell.operator(op);
+      p.grid[r + 2][c] = Cell.number(B, fixed: false);
+      p.grid[r + 3][c] = Cell.equals();
+      p.grid[r + 4][c] = Cell.result(C, fixed: false);
     }
 
-    // Marca como usadas todas las celdas
-    for (final coord in coords) {
-      used[coord.r][coord.c] = true;
+    // Marcar como usadas
+    for (int i = 0; i < 5; i++) {
+      final int cr = horizontal ? r : r + i;
+      final int cc = horizontal ? c + i : c;
+      used[cr][cc] = true;
     }
 
     return true;
   }
 
-  // Genera ecuación bonita y limpia
-  static List _makeNiceEquation(int maxVal, String diff) {
-    final ops = diff == 'easy' ? ['+', '-'] :
-                diff == 'medium' ? ['+', '-', '*'] : ['+', '-', '*', '/'];
+  // Genera ecuación perfecta (nunca 0, nunca negativa, bonita)
+  static List _generatePerfectEquation(int maxVal, String diff) {
+    final List<String> ops = diff == 'easy'
+        ? ['+', '-']
+        : diff == 'medium'
+            ? ['+', '-', '*']
+            : ['+', '-', '*', '/'];
 
-    for (int t = 0; t < 80; t++) {
-      final op = ops[_rnd.nextInt(ops.length)];
+    for (int t = 0; t < 100; t++) {
+      final String op = ops[_rnd.nextInt(ops.length)];
       int A, B, C;
 
-      switch (op) {
-        case '+':
-          A = 2 + _rnd.nextInt(maxVal - 3);
-          B = 2 + _rnd.nextInt(maxVal - A);
-          C = A + B;
-          break;
-        case '-':
-          C = 3 + _rnd.nextInt(maxVal - 4);
-          B = 1 + _rnd.nextInt(C - 2);
-          A = B + C;
-          break;
-        case '*':
-          A = 2 + _rnd.nextInt(15);
-          B = 2 + _rnd.nextInt((maxVal ~/ A).clamp(2, 99));
-          C = A * B;
-          if (C > maxVal) continue;
-          break;
-        case '/':
-          C = 3 + _rnd.nextInt(maxVal - 2);
-          final divs = [for (int d = 2; d <= 30 && d <= C; d++) if (C % d == 0) d];
-          if (divs.isEmpty) continue;
-          final d = divs[_rnd.nextInt(divs.length)];
-          B = d;
-          A = C * d;
-          if (A > maxVal) continue;
-          break;
-        default:
-          continue;
+      if (op == '+') {
+        A = 2 + _rnd.nextInt(maxVal - 4);
+        B = 2 + _rnd.nextInt(maxVal - A);
+        C = A + B;
+      } else if (op == '-') {
+        C = 4 + _rnd.nextInt(maxVal - 6);
+        B = 1 + _rnd.nextInt(C - 2);
+        A = B + C;
+      } else if (op == '*') {
+        A = 2 + _rnd.nextInt(12);
+        B = 2 + _rnd.nextInt((maxVal ~/ A).clamp(2, 50));
+        C = A * B;
+        if (C > maxVal) continue;
+      } else { // /
+        C = 3 + _rnd.nextInt(maxVal - 3);
+        final List<int> divisors = [];
+        for (int d = 2; d <= 30; d++) if (C % d == 0 && C * d <= maxVal) divisors.add(d);
+        if (divisors.isEmpty) continue;
+        B = divisors[_rnd.nextInt(divisors.length)];
+        A = B * C;
       }
-      return [A, op, B, C];
+
+      if (A > 0 && B > 0 && C > 1 && A <= maxVal && B <= maxVal && C <= maxVal) {
+        return [A, op, B, C];
+      }
     }
     return null;
   }
 
-  // Encuentra posición perfecta para nueva ecuación que cruce con alguna existente
-  static _Equation _findGoodCrossingPosition(List<_Equation> existing, int size, List<List<bool>> used) {
+  // Encuentra posición que cruce correctamente (solo en número o resultado)
+  static _Equation _findValidCrossing(List<_Equation> existing, int size, List<List<bool>> used) {
     final List<_Equation> candidates = [];
 
-    for (final eq in existing) {
-      final cells = eq.horizontal
-          ? [for (int i = 0; i < 5; i++) Coord(eq.row, eq.col + i)]
-          : [for (int i = 0; i < 5; i++) Coord(eq.row + i, eq.col)];
+    for (final _Equation eq in existing) {
+      final List<Coord> cells = [];
+      if (eq.horizontal) {
+        for (int i = 0; i < 5; i++) cells.add(Coord(eq.row, eq.col + i));
+      } else {
+        for (int i = 0; i < 5; i++) cells.add(Coord(eq.row + i, eq.col));
+      }
 
-      // Solo cruzamos en celdas de número o resultado (índices 0,2,4)
-      for (int idx in [0, 2, 4]) {
-        final cell = cells[idx];
-        if (cell.r < 2 || cell.r >= size - 4 || cell.c < 2 || cell.c >= size - 4) continue;
+      // Solo cruzamos en posiciones 0, 2 o 4 (números y resultado)
+      for (int pos in [0, 2, 4]) {
+        final Coord cell = cells[pos];
+        if (cell.r < 2 || cell.r > size - 5 || cell.c < 2 || cell.c > size - 5) continue;
 
-        // Probar horizontal y vertical pasando por esta celda
-        candidates.add(_Equation(true, cell.r, cell.c - idx));     // horizontal
-        candidates.add(_Equation(false, cell.r - idx, cell.c));    // vertical
+        // Horizontal pasando por esta celda
+        candidates.add(_Equation(true, cell.r, cell.c - pos));
+        // Vertical pasando por esta celda
+        candidates.add(_Equation(false, cell.r - pos, cell.c));
       }
     }
 
     candidates.shuffle(_rnd);
-    for (final cand in candidates) {
-      if (_isPositionSafe(cand, size, used)) {
-        return cand;
+    for (final _Equation cand in candidates) {
+      final int sr = cand.horizontal ? cand.row : cand.row;
+      final int sc = cand.horizontal ? cand.col : cand.col;
+      final int er = cand.horizontal ? cand.row : cand.row + 4;
+      final int ec = cand.horizontal ? cand.col + 4 : cand.col;
+
+      if (sr >= 0 && er < size && sc >= 0 && ec < size) {
+        bool safe = true;
+        for (int i = 0; i < 5 && safe; i++) {
+          final int cr = cand.horizontal ? sr : sr + i;
+          final int cc = cand.horizontal ? sc + i : sc;
+          if (used[cr][cc]) safe = false;
+        }
+        if (safe) return cand;
       }
     }
     return null;
   }
 
-  // Verifica que la posición esté libre y con separación mínima
-  static bool _isPositionSafe(_Equation eq, int size, List<List<bool>> used) {
-    final positions = eq.horizontal
-        ? [for (int i = 0; i < 5; i++) Coord(eq.row, eq.col + i)]
-        : [for (int i = 0; i < 5; i++) Coord(eq.row + i, eq.col)];
-
-    for (final pos in positions) {
-      if (!used[pos.r][pos.c]) continue;
-      return false; // ya ocupada
-    }
-
-    // Separación mínima de 1 celda con cualquier otra ecuación no cruzada
-    for (int dr = -2; dr <= 2; dr++) {
-      for (int dc = -2; dc <= 2; dc++) {
-        if (dr.abs() <= 1 && dc.abs() <= 1) continue; // permitimos cruce real
-        final r = eq.horizontal ? eq.row + dr : eq.row + dr;
-        final c = eq.horizontal ? eq.col + dc : eq.col + dc;
-        if (r >= 0 && r < size && c >= 0 && c < size && used[r][c]) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  // Finaliza con pistas mínimas por ecuación
-  static bool _finalizeWithMinClues(MatrixPuzzle p, int percent, List<_Equation> equations) {
-    final numberCells = <Coord>[];
+  // Garantiza al menos 2-3 pistas por ecuación
+  static bool _finalizeWithGuaranteedClues(MatrixPuzzle p, int percent, List<_Equation> equations) {
+    final List<Coord> numberCells = [];
 
     for (int r = 0; r < p.rows; r++) {
       for (int c = 0; c < p.cols; c++) {
-        final cell = p.grid[r][c];
+        final Cell cell = p.grid[r][c];
         if ((cell.type == CellType.number || cell.type == CellType.result) && cell.number != null) {
           numberCells.add(Coord(r, c));
         }
       }
     }
 
-    if (numberCells.length < 24) return false;
+    if (numberCells.length < 25) return false;
 
-    // Por ecuación, forzamos al menos 2-3 pistas
-    final Set<Coord> forcedClues = {};
-    for (final eq in equations) {
-      final cells = eq.horizontal
-          ? [for (int i = 0; i < 5; i += 2) Coord(eq.row, eq.col + i)] // solo números y resultado
-          : [for (int i = 0; i < 5; i += 2) Coord(eq.row + i, eq.col)];
-      cells.shuffle(_rnd);
-      for (int i = 0; i < 2 + _rnd.nextInt(2); i++) { // 2 o 3 pistas
-        forcedClues.add(cells[i]);
+    // Forzar pistas mínimas por ecuación
+    final Set<Coord> forced = Set<Coord>();
+    for (final _Equation eq in equations) {
+      final List<Coord> nums = [];
+      if (eq.horizontal) {
+        nums.add(Coord(eq.row, eq.col));
+        nums.add(Coord(eq.row, eq.col + 2));
+        nums.add(Coord(eq.row, eq.col + 4));
+      } else {
+        nums.add(Coord(eq.row, eq.col));
+        nums.add(Coord(eq.row + 2, eq.col));
+        nums.add(Coord(eq.row + 4, eq.col));
       }
+      nums.shuffle(_rnd);
+      for (int i = 0; i < 2; i++) forced.add(nums[i]); // mínimo 2
+      if (_rnd.nextDouble() < 0.6) forced.add(nums[2]); // a veces 3
     }
 
-    numberCells.shuffle(_rnd);
-    final totalClues = (numberCells.length * percent / 100).ceil().clamp(forcedClues.length + 5, numberCells.length - 6);
-
+    // Aplicar pistas
     p.bankCounts.clear();
+    int extraClues = (numberCells.length * percent / 100).ceil() - forced.length;
+    extraClues = extraClues.clamp(0, numberCells.length - forced.length - 5);
+
+    numberCells.shuffle(_rnd);
+
     int cluesPlaced = 0;
-    for (final coord in numberCells) {
-      final cell = p.grid[coord.r][coord.c];
-      if (forcedClues.contains(coord) || cluesPlaced < totalClues) {
+    for (final Coord coord in numberCells) {
+      final Cell cell = p.grid[coord.r][coord.c];
+      if (forced.contains(coord) || cluesPlaced < extraClues + forced.length) {
         cell.fixed = true;
         cluesPlaced++;
       } else {
@@ -237,12 +269,14 @@ class MatrixGenerator {
         cell.number = null;
       }
     }
+
     return true;
   }
 }
 
 class _Equation {
   final bool horizontal;
-  final int row, col;
+  final int row;
+  final int col;
   _Equation(this.horizontal, this.row, this.col);
 }
