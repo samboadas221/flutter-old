@@ -52,34 +52,44 @@ class _GameScreenState extends State<GameScreen> {
   void _onCellTap(int r, int c) {
     final cell = puzzle.grid[r][c];
 
-    // Solo interactuamos con celdas de número o resultado que no estén fijas
+    // Solo celdas de número o resultado
     if (cell.type != CellType.number && cell.type != CellType.result) return;
-    if (cell.fixed) return;
+    if (cell.fixed) return; // pistas no se tocan
 
+    // Si no hay número seleccionado → intentar borrar (devolver al banco)
     if (selectedNumber == null) {
-      // Si no hay número seleccionado → intentar borrar
       if (cell.number != null) {
+        final removed = cell.number;
         puzzle.removeNumber(r, c);
         setState(() {});
+        // Opcional: seleccionar automáticamente el que acabas de quitar
+        selectedNumber = removed;
       }
       return;
     }
 
-    // Colocar número seleccionado
-    if (selectedNumber != null && puzzle.bankContains(selectedNumber)) {
-      puzzle.placeNumber(r, c, selectedNumber); // Quitamos el if → siempre coloca
+    // === COLOCAR NÚMERO (incluso si ya hay uno) ===
+    if (puzzle.bankContains(selectedNumber)) {
+      final oldNumber = cell.number;
+
+      // Colocamos el nuevo (siempre, sin validar nada)
+      cell.number = selectedNumber;
+      puzzle.bankUse(selectedNumber);
+
+      // Si había un número anterior → lo devolvemos al banco
+      if (oldNumber != null) {
+        puzzle.bankCounts[oldNumber] = (puzzle.bankCounts[oldNumber] ?? 0) + 1;
+      }
+
       setState(() {
         if (!puzzle.bankContains(selectedNumber)) {
           selectedNumber = null;
         }
         _checkVictory();
       });
-      return; // importante
     }
-    
-    
   }
-
+  
   void _checkVictory() {
     if (puzzle.isSolved()) {
       showDialog(

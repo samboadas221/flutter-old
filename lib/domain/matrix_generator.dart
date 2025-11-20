@@ -1,8 +1,4 @@
 
-// lib/domain/matrix_generator.dart
-// Versión 3.0 - Generador perfecto para CrossMath - Noviembre 2025
-// Compatible con Flutter 1.22 (sin null-safety)
-
 import 'dart:math';
 import 'matrix_puzzle.dart';
 import 'cell.dart';
@@ -12,224 +8,173 @@ class MatrixGenerator {
 
   static MatrixPuzzle generate({
     String difficulty = 'easy',
-    int minRows = 9,
-    int maxRows = 12,
-    int minCols = 9,
-    int maxCols = 12,
-    int cluePercent = 40,
+    int minSize = 9,
+    int maxSize = 12,
+    int cluePercent = 42,
   }) {
-    final rows = minRows + _rnd.nextInt(maxRows - minRows + 1);
-    final cols = minCols + _rnd.nextInt(maxCols - minCols + 1);
-    final maxVal = _maxForDifficulty(difficulty);
+    final size = minSize + _rnd.nextInt(maxSize - minSize + 1);
+    final maxVal = difficulty == 'easy' ? 25 : difficulty == 'medium' ? 50 : 99;
 
-    while (true) { // Reintentamos hasta tener un puzzle perfecto
-      final puzzle = MatrixPuzzle(rows, cols, difficulty: difficulty);
+    while (true) {
+      final puzzle = MatrixPuzzle(size, size, difficulty: difficulty);
+      final equations = <_Equation>[];
 
-      // Limpia todo
-      for (int r = 0; r < rows; r++) {
-        for (int c = 0; c < cols; c++) {
-          puzzle.grid[r][c] = Cell.empty();
+      // Colocamos la primera ecuación en el centro aproximado
+      final firstH = _rnd.nextBool();
+      final firstR = 2 + _rnd.nextInt(size - 6);
+      final firstC = 2 + _rnd.nextInt(size - 6);
+      final first = _Equation(firstH, firstR, firstC);
+      if (!_tryPlaceEquation(puzzle, first, maxVal, difficulty)) continue;
+      equations.add(first);
+
+      // Crecemos orgánicamente como una red
+      for (int i = 0; i < 600 && equations.length < size; i++) {
+        final candidate = _generateCandidateNear(equations, size);
+        if (candidate == null) continue;
+
+        if (_conflictsStrict(candidate, equations, size)) continue;
+
+        if (_tryPlaceEquation(puzzle, candidate, maxVal, difficulty)) {
+          equations.add(candidate);
         }
       }
 
-      final placedEquations = <_Equation>[];
+      if (equations.length < 6) continue; // muy vacío
 
-      // Intentamos colocar ecuaciones hasta cubrir bien el tablero
-      for (int attempt = 0; attempt < 3000; attempt++) {
-        final horizontal = _rnd.nextBool();
-        final length = 5;
-
-        int startRow, startCol;
-        if (horizontal) {
-          startRow = 1 + _rnd.nextInt(rows - 2); // deja margen arriba y abajo
-          startCol = _rnd.nextInt(cols - length + 1);
-        } else {
-          startRow = _rnd.nextInt(rows - length + 1);
-          startCol = 1 + _rnd.nextInt(cols - 2); // deja margen izquierda y derecha
-        }
-
-        final eq = _Equation(horizontal, startRow, startCol);
-
-        // Verifica que no choque ilegalmente con otras ecuaciones
-        if (placedEquations.any((e) => _conflicts(e, eq))) {
-          continue;
-        }
-
-        // Genera una ecuación válida
-        final equationData = _generateValidEquation(maxVal, difficulty);
-        if (equationData == null) continue;
-
-        final A = equationData[0];
-        final op = equationData[1];
-        final B = equationData[2];
-        final C = equationData[3];
-
-        // Coloca en el tablero (sin merge: ahora es seguro)
-        _placeEquation(puzzle, eq, A, op, B, C);
-
-        placedEquations.add(eq);
-
-        // Si ya tenemos suficiente cobertura, paramos
-        if (placedEquations.length >= (rows * cols) ~/ 11) {
-          break;
-        }
+      if (_finalizePuzzle(puzzle, cluePercent, equations.length)) {
+        return puzzle;
       }
-
-      // Si no hay ecuaciones, reintentar
-      if (placedEquations.isEmpty) continue;
-
-      // Ahora ocultamos números y creamos banco
-      if (_finalizePuzzle(puzzle, cluePercent)) {
-        return puzzle; // ¡Éxito!
-      }
-      // Si no (por ejemplo, muy pocos números), reintenta todo
     }
   }
 
-  // Genera A op B = C con C >= 1 y sin negativos
-  static List _generateValidEquation(int maxVal, String difficulty) {
-    final ops = difficulty == 'easy'
-        ? ['+', '-', '+', '-'] // más suma y resta
-        : difficulty == 'medium'
-            ? ['+', '-', '*', '+']
-            : ['+', '-', '*', '/'];
+  static bool _tryPlaceEquation(MatrixPuzzle p, _Equation eq, int maxVal, String diff) {
+    final data = _generateCleanEquation(maxVal, diff) ;
+    if (data == null) return false;
 
-    for (int t = 0; t < 80; t++) {
+    final A = data[0]; final op = data[1]; final B = data[2]; final C = data[3];
+
+    if (eq.horizontal) {
+      p.grid[eq.row][eq.col]     = Cell.number(A, fixed: false);
+      p.grid[eq.row][eq.col+1]   = Cell.operator(op);
+      p.grid[eq.row][eq.col+2]   = Cell.number(B, fixed: false);
+      p.grid[eq.row][eq.col+3]   = Cell.equals();
+      p.grid[eq.row][eq.col+4]   = Cell.result(C, fixed: false);
+    } else {
+      p.grid[eq.row][eq.col]     = Cell.number(A, fixed: false);
+      p.grid[eq.row+1][eq.col]   = Cell.operator(op);
+      p.grid[eq.row+2][eq.col]   = Cell.number(B, fixed: false);
+      p.grid[eq.row+3][eq.col]   = Cell.equals();
+      p.grid[eq.row+4][eq.col]   = Cell.result(C, fixed: false);
+    }
+    return true;
+  }
+
+  static List _generateCleanEquation(int maxVal, String diff) {
+    final ops = diff == 'easy' ? ['+', '-', '+'] :
+                diff == 'medium' ? ['+', '-', '*', '+'] :
+                ['+', '-', '*', '/'];
+
+    for (int t = 0; t < 100; t++) {
       final op = ops[_rnd.nextInt(ops.length)];
       int A, B, C;
 
-      if (op == '+') {
-        A = 1 + _rnd.nextInt(maxVal);
-        B = 1 + _rnd.nextInt(maxVal);
-        C = A + B;
-      } else if (op == '-') {
-        C = 1 + _rnd.nextInt(maxVal);
-        B = 1 + _rnd.nextInt(maxVal - 1);
-        A = C + B;
-      } else if (op == '*') {
-        final factors = _getFactors(maxVal * 2); // permite más opciones
-        if (factors.isEmpty) continue;
-        A = factors[_rnd.nextInt(factors.length)];
-        B = 2 + _rnd.nextInt(maxVal ~/ A + 1);
-        C = A * B;
-      } else { // '/'
-        C = 1 + _rnd.nextInt(maxVal);
-        final divisors = _getDivisors(C * 5); // más opciones
-        if (divisors.length < 2) continue;
-        B = divisors[1 + _rnd.nextInt(divisors.length - 1)];
-        if (B == 0 || B == 1) continue;
-        A = C * B;
+      if (op == '+') { A = 1 + _rnd.nextInt(maxVal-1); B = 1 + _rnd.nextInt(maxVal-A); C = A + B; }
+      else if (op == '-') { C = 2 + _rnd.nextInt(maxVal-2); B = 1 + _rnd.nextInt(C-1); A = B + C; }
+      else if (op == '*') {
+        A = 2 + _rnd.nextInt(12); B = 2 + _rnd.nextInt(maxVal ~/ A); C = A * B;
+        if (C > maxVal) continue;
+      } else { // división
+        C = 2 + _rnd.nextInt(maxVal);
+        final divs = <int>[];
+        for (int d=2; d<=C; d++) if (C % d == 0) divs.add(d);
+        if (divs.isEmpty) continue;
+        B = divs[_rnd.nextInt(divs.length)];
+        A = B * C;
+        if (A > maxVal) continue;
       }
 
-      if (C > maxVal || A > maxVal || B > maxVal) continue;
-      if (C <= 0) continue;
-
-      return [A, op, B, C];
+      if (A >= 1 && B >= 1 && C >= 2 && A <= maxVal && B <= maxVal && C <= maxVal) {
+        return [A, op, B, C];
+      }
     }
     return null;
   }
 
-  static List<int> _getFactors(int n) {
-    List<int> f = [];
-    for (int i = 2; i * i <= n; i++) if (n % i == 0) f.add(i);
-    return f.isEmpty ? [2] : f;
-  }
+  static _Equation _generateCandidateNear(List<_Equation> existing, int size) {
+    if (existing.isEmpty) return null;
+    final base = existing[_rnd.nextInt(existing.length)];
 
-  static List<int> _getDivisors(int n) {
-    List<int> d = [];
-    for (int i = 1; i * i <= n; i++) {
-      if (n % i == 0) {
-        d.add(i);
-        if (i != n ~/ i) d.add(n ~/ i);
+    final candidates = <_Equation>[];
+    final offsets = [-3,-2,-1,1,2,3];
+
+    for (int dr in offsets) {
+      for (int dc in offsets) {
+        if (dr == 0 && dc == 0) continue;
+        final h = _rnd.nextBool();
+        int r = base.row + (h ? dr : 0);
+        int c = base.col + (h ? 0 : dc);
+        if (r < 0 || c < 0 || r + (h?0:4) >= size || c + (h?4:0) >= size) continue;
+        candidates.add(_Equation(h, r, c));
       }
     }
-    d.sort();
-    return d;
+    return candidates.isNotEmpty ? candidates[_rnd.nextInt(candidates.length)] : null;
   }
 
-  static void _placeEquation(MatrixPuzzle p, _Equation eq, int A, String op, int B, int C) {
-    final r = eq.row;
-    final c = eq.col;
-    if (eq.horizontal) {
-      p.grid[r][c]   = Cell.number(A, fixed: false);
-      p.grid[r][c+1] = Cell.operator(op);
-      p.grid[r][c+2] = Cell.number(B, fixed: false);
-      p.grid[r][c+3] = Cell.equals();
-      p.grid[r][c+4] = Cell.result(C, fixed: false);
-    } else {
-      p.grid[r][c]   = Cell.number(A, fixed: false);
-      p.grid[r+1][c] = Cell.operator(op);
-      p.grid[r+2][c] = Cell.number(B, fixed: false);
-      p.grid[r+3][c] = Cell.equals();
-      p.grid[r+4][c] = Cell.result(C, fixed: false);
-    }
-  }
-
-  static bool _conflicts(_Equation a, _Equation b) {
-    if (a.horizontal == b.horizontal) {
-      // Mismo sentido → no pueden estar cerca
-      if (a.horizontal) {
-        if (a.row.abs() - b.row.abs() <= 1) {
-          final left = max(a.col, b.col);
-          final right = min(a.col + 4, b.col + 4);
-          if (left <= right) return true;
+  // Regla física estricta: mismo sentido → 2 filas/columnas mínimo, distinto sentido → solo si se cruzan
+  static bool _conflictsStrict(_Equation candidate, List<_Equation> existing, int size) {
+    for (final e in existing) {
+      if (candidate.horizontal == e.horizontal) {
+        if (candidate.horizontal) {
+          if ((candidate.row - e.row).abs() <= 1) return true;
+        } else {
+          if ((candidate.col - e.col).abs() <= 1) return true;
         }
       } else {
-        if (a.col.abs() - b.col.abs() <= 1) {
-          final top = max(a.row, b.row);
-          final bot = min(a.row + 4, b.row + 4);
-          if (top <= bot) return true;
+        // Distinto sentido → solo permitido si se cruzan de verdad
+        final h = candidate.horizontal ? candidate : e;
+        final v = candidate.horizontal ? e : candidate;
+        bool crosses = h.row == v.row || h.row == v.row+1 || h.row == v.row+2 || h.row == v.row+3 || h.row == v.row+4;
+        crosses &= (v.col >= h.col && v.col <= h.col+4);
+        if (!crosses) {
+          // Si no se cruzan → no pueden estar a menos de 2 casillas
+          final distR = (h.row - v.row).abs();
+          final distC = (h.col - v.col).abs();
+          if (distR <= 1 || distC <= 1) return true;
         }
       }
     }
     return false;
   }
 
-  static bool _finalizePuzzle(MatrixPuzzle puzzle, int cluePercent) {
-    final numberCells = <Coord>[];
+  static bool _finalizePuzzle(MatrixPuzzle p, int percent, int eqCount) {
+    final cells = <Coord>[];
+    for (int r = 0; r < p.rows; r++)
+      for (int c = 0; c < p.cols; c++)
+        if (p.grid[r][c].type == CellType.number || p.grid[r][c].type == CellType.result)
+          if (p.grid[r][c].number != null)
+            cells.add(Coord(r, c));
 
-    for (int r = 0; r < puzzle.rows; r++) {
-      for (int c = 0; c < puzzle.cols; c++) {
-        final cell = puzzle.grid[r][c];
-        if (cell.type == CellType.number || cell.type == CellType.result) {
-          if (cell.number == null) return false; // seguridad
-          numberCells.add(Coord(r, c));
-        }
-      }
-    }
+    if (cells.length < 18) return false;
 
-    if (numberCells.length < 15) return false; // muy vacío
+    cells.shuffle(_rnd);
+    final clues = (cells.length * percent / 100).ceil().clamp(6, cells.length - 4);
 
-    numberCells.shuffle(_rnd);
-    final keepCount = (numberCells.length * cluePercent / 100).ceil().clamp(5, numberCells.length - 5);
-
-    puzzle.bankCounts.clear();
-    for (int i = 0; i < numberCells.length; i++) {
-      final coord = numberCells[i];
-      final cell = puzzle.grid[coord.r][coord.c];
-      if (i < keepCount) {
+    p.bankCounts.clear();
+    for (int i = 0; i < cells.length; i++) {
+      final cell = p.grid[cells[i].r][cells[i].c];
+      if (i < clues) {
         cell.fixed = true;
       } else {
-        puzzle.bankCounts[cell.number] = (puzzle.bankCounts[cell.number] ?? 0) + 1;
+        p.bankCounts[cell.number] = (p.bankCounts[cell.number] ?? 0) + 1;
         cell.number = null;
-        cell.fixed = false;
       }
     }
-
     return true;
-  }
-
-  static int _maxForDifficulty(String d) {
-    if (d == 'easy') return 25;
-    if (d == 'medium') return 50;
-    return 99;
   }
 }
 
-// Clase auxiliar privada
 class _Equation {
   final bool horizontal;
-  final int row;
-  final int col;
+  final int row, col;
   _Equation(this.horizontal, this.row, this.col);
 }
