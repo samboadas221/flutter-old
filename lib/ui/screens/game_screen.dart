@@ -66,16 +66,18 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     // Colocar número seleccionado
-    if (puzzle.bankContains(selectedNumber)) {
-      if (puzzle.placeNumber(r, c, selectedNumber)) {
-        setState(() {
-          if (!puzzle.bankContains(selectedNumber)) {
-            selectedNumber = null; // se acabó ese número
-          }
-          _checkVictory();
-        });
-      }
+    if (selectedNumber != null && puzzle.bankContains(selectedNumber)) {
+      puzzle.placeNumber(r, c, selectedNumber); // Quitamos el if → siempre coloca
+      setState(() {
+        if (!puzzle.bankContains(selectedNumber)) {
+          selectedNumber = null;
+        }
+        _checkVictory();
+      });
+      return; // importante
     }
+    
+    
   }
 
   void _checkVictory() {
