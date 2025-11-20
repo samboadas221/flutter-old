@@ -1,5 +1,4 @@
 
-// lib/domain/matrix_solver.dart
 // Compatible con Flutter 1.22 (no null-safety)
 
 import 'matrix_puzzle.dart';

@@ -1,5 +1,4 @@
 
-// lib/domain/matrix_generator.dart
 // Compatible with Flutter 1.22 (no null-safety)
 
 import 'dart:math';

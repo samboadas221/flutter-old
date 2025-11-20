@@ -1,5 +1,4 @@
 
-// lib/domain/matrix_puzzle.dart
 // Compatible con Flutter 1.22 (no null-safety)
 
 import 'dart:convert';
