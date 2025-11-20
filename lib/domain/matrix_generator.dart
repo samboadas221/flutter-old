@@ -118,7 +118,8 @@ class MatrixGenerator {
       p.grid[r + 4][c] = Cell.result(C, fixed: false);
     }
   }
-
+  
+  
   // Intenta expandir una ecuación generando 2 nuevas inversas
   static void _tryExpandEquation(MatrixPuzzle p, List<_Equation> equations, _Equation current, int maxVal, String difficulty, int size) {
     final bool newHorizontal = !current.horizontal;
@@ -126,24 +127,34 @@ class MatrixGenerator {
     // Direcciones: izquierda/arriba = 0, derecha/abajo = 1
     for (int dir = 0; dir < 2; dir++) {
       for (int attempt = 0; attempt < 5; attempt++) {
-        // Seleccionar casilla aleatoria de la ecuación actual
-        final int pos = _rnd.nextInt(5); // 0-4: A, op, B, =, C
+        // Seleccionar casilla aleatoria de la ecuación actual (pos 0-4)
+        final int basePos = _rnd.nextInt(5);
 
-        final int baseR = current.horizontal ? current.row : current.row + pos;
-        final int baseC = current.horizontal ? current.col + pos : current.col;
+        final int baseR = current.horizontal ? current.row : current.row + basePos;
+        final int baseC = current.horizontal ? current.col + basePos : current.col;
 
-        // Calcular posición para la nueva ecuación
-        int newR = newHorizontal ? baseR : dir == 0 ? baseR - 4 : baseR;
-        int newC = newHorizontal ? dir == 0 ? baseC - 4 : baseC : baseC;
+        // Elegir posición en la NUEVA ecuación donde se cruzará (0-4)
+        final int crossPos = _rnd.nextInt(5);
+
+        // Calcular start de nueva para cruzar en base (depende de dirección)
+        int newR, newC;
+        if (newHorizontal) {
+          newR = baseR;
+          newC = dir == 0 ? baseC - crossPos : baseC + (4 - crossPos); // izquierda o derecha
+        } else {
+          newR = dir == 0 ? baseR - crossPos : baseR + (4 - crossPos);
+          newC = baseC;
+        }
 
         // Verificar límites
         if (newR < 0 || newR + (newHorizontal ? 0 : 4) >= size || newC < 0 || newC + (newHorizontal ? 4 : 0) >= size) continue;
 
-        // Verificar colisiones
+        // Verificar colisiones (ninguna celda ocupada, excepto el cruce en base)
         bool collision = false;
         for (int i = 0; i < 5; i++) {
           int cr = newHorizontal ? newR : newR + i;
           int cc = newHorizontal ? newC + i : newC;
+          if (cr == baseR && cc == baseC) continue; // permitir el cruce
           if (p.grid[cr][cc].type != CellType.empty) {
             collision = true;
             break;
@@ -160,7 +171,7 @@ class MatrixGenerator {
 
         // Añadir a lista
         equations.add(_Equation(newHorizontal, newR, newC, newData));
-        break; // Éxito, pasar a siguiente dirección
+        break; // Éxito en esta dirección
       }
     }
   }
