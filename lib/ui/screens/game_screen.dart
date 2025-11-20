@@ -1,9 +1,9 @@
 
 import 'package:flutter/material.dart';
 import 'dart:math';
-import '../domain/matrix_generator.dart';
-import '../domain/matrix_puzzle.dart';
-import '../domain/cell.dart';
+import '../../domain/matrix_generator.dart';
+import '../../domain/matrix_puzzle.dart';
+import '../../domain/cell.dart';
 
 enum Difficulty { easy, medium, hard }
 

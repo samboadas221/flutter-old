@@ -1,0 +1,61 @@
+
+lib/ui/screens/game_screen.dart:4:8: Error: Error when reading 'lib/ui/domain/matrix_generator.dart': No such file or directory
+import '../domain/matrix_generator.dart';
+       ^
+lib/ui/screens/game_screen.dart:5:8: Error: Error when reading 'lib/ui/domain/matrix_puzzle.dart': No such file or directory
+import '../domain/matrix_puzzle.dart';
+       ^
+lib/ui/screens/game_screen.dart:6:8: Error: Error when reading 'lib/ui/domain/cell.dart': No such file or directory
+import '../domain/cell.dart';
+       ^
+lib/ui/screens/game_screen.dart:20:3: Error: Type 'MatrixPuzzle' not found.
+  MatrixPuzzle puzzle;
+  ^^^^^^^^^^^^
+lib/ui/screens/game_screen.dart:20:3: Error: 'MatrixPuzzle' isn't a type.
+  MatrixPuzzle puzzle;
+  ^^^^^^^^^^^^
+lib/ui/screens/game_screen.dart:44:16: Error: The getter 'MatrixGenerator' isn't defined for the class '_GameScreenState'.
+ - '_GameScreenState' is from 'package:my_app/ui/screens/game_screen.dart' ('lib/ui/screens/game_screen.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'MatrixGenerator'.
+      puzzle = MatrixGenerator.generate(
+               ^^^^^^^^^^^^^^^
+lib/ui/screens/game_screen.dart:56:22: Error: The getter 'CellType' isn't defined for the class '_GameScreenState'.
+ - '_GameScreenState' is from 'package:my_app/ui/screens/game_screen.dart' ('lib/ui/screens/game_screen.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'CellType'.
+    if (cell.type != CellType.number && cell.type != CellType.result) return;
+                     ^^^^^^^^
+lib/ui/screens/game_screen.dart:56:54: Error: The getter 'CellType' isn't defined for the class '_GameScreenState'.
+ - '_GameScreenState' is from 'package:my_app/ui/screens/game_screen.dart' ('lib/ui/screens/game_screen.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'CellType'.
+    if (cell.type != CellType.number && cell.type != CellType.result) return;
+                                                     ^^^^^^^^
+lib/ui/screens/game_screen.dart:186:19: Error: 'Cell' isn't a type.
+                  Cell cell = puzzle.grid[r][c];
+                  ^^^^
+lib/ui/screens/game_screen.dart:192:36: Error: The getter 'CellType' isn't defined for the class '_GameScreenState'.
+ - '_GameScreenState' is from 'package:my_app/ui/screens/game_screen.dart' ('lib/ui/screens/game_screen.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'CellType'.
+                  if (cell.type == CellType.empty) {
+                                   ^^^^^^^^
+lib/ui/screens/game_screen.dart:196:36: Error: The getter 'CellType' isn't defined for the class '_GameScreenState'.
+ - '_GameScreenState' is from 'package:my_app/ui/screens/game_screen.dart' ('lib/ui/screens/game_screen.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'CellType'.
+                  if (cell.type == CellType.operator) {
+                                   ^^^^^^^^
+lib/ui/screens/game_screen.dart:200:43: Error: The getter 'CellType' isn't defined for the class '_GameScreenState'.
+ - '_GameScreenState' is from 'package:my_app/ui/screens/game_screen.dart' ('lib/ui/screens/game_screen.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'CellType'.
+                  } else if (cell.type == CellType.equals) {
+                                          ^^^^^^^^
+lib/ui/screens/game_screen.dart:204:43: Error: The getter 'CellType' isn't defined for the class '_GameScreenState'.
+ - '_GameScreenState' is from 'package:my_app/ui/screens/game_screen.dart' ('lib/ui/screens/game_screen.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'CellType'.
+                  } else if (cell.type == CellType.number || cell.type == CellType.result) {
+                                          ^^^^^^^^
+lib/ui/screens/game_screen.dart:204:75: Error: The getter 'CellType' isn't defined for the class '_GameScreenState'.
+ - '_GameScreenState' is from 'package:my_app/ui/screens/game_screen.dart' ('lib/ui/screens/game_screen.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'CellType'.
+                  } else if (cell.type == CellType.number || cell.type == CellType.result) {
+                                                                          ^^^^^^^^
+FAILURE: Build failed with an exception.
+* Where:
