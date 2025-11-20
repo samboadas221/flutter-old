@@ -105,6 +105,7 @@ class _GameScreenState extends State<GameScreen> {
       ),
       body: Column(
         children: [
+          
           // Banco de números
           Container(
             padding: EdgeInsets.all(12),
@@ -113,9 +114,11 @@ class _GameScreenState extends State<GameScreen> {
               spacing: 10,
               runSpacing: 10,
               alignment: WrapAlignment.center,
-              children: puzzle.bankCounts.keys.toList()
-                ..sort()
-                .map((num) {
+              children: () {
+                // Extraemos y ordenamos los números del banco
+                List<int> numbers = puzzle.bankCounts.keys.toList();
+                numbers.sort((a, b) => a.compareTo(b));
+                return numbers.map((num) {
                   int count = puzzle.bankCounts[num];
                   bool isSelected = selectedNumber == num;
                   return GestureDetector(
@@ -163,9 +166,12 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                     ),
                   );
-                }).toList(),
+                }).toList();
+              }(),
             ),
           ),
+          
+          
 
           // Cuadrícula del puzzle
           Expanded(
