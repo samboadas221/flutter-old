@@ -2,11 +2,11 @@
 // lib/domain/cell.dart
 
 class CellType {
-  static const CellType empty = CellType('empty');
-  static const CellType number = CellType('number');
-  static const CellType operator = CellType('operator');
-  static const CellType equals = CellType('equals');
-  static const CellType result = CellType('result');
+  static CellType empty = CellType('empty');
+  static CellType number = CellType('number');
+  static CellType operator = CellType('operator');
+  static CellType equals = CellType('equals');
+  static CellType result = CellType('result');
 
   String name;
   CellType(this.name);
