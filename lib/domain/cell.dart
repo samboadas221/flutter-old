@@ -8,8 +8,8 @@ class CellType {
   static const CellType equals = CellType.('equals');
   static const CellType result = CellType.('result');
 
-  final String name;
-  const CellType.(this.name);
+  String name;
+  const CellType(this.name);
 
   static const List<CellType> values = [
     empty,
