@@ -4,17 +4,16 @@
 class CellType {
   static const CellType empty = CellType('empty');
   static const CellType number = CellType('number');
-  static const CellType op = CellType('operator');
+  static const CellType op = CellType('op');
   static const CellType equals = CellType('equals');
   static const CellType result = CellType('result');
 
   final String name;
   const CellType(this.name);
-
   static List<CellType> values = [
     empty,
     number,
-    operator,
+    op,
     equals,
     result,
   ];
