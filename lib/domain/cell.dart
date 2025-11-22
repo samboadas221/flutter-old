@@ -11,7 +11,7 @@ class CellType {
   String name;
   CellType(this.name);
 
-  static const List<CellType> values = [
+  static List<CellType> values = [
     empty,
     number,
     operator,
