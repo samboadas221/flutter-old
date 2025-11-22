@@ -2,14 +2,14 @@
 // lib/domain/cell.dart
 
 class CellType {
-  static CellType empty = CellType('empty');
-  static CellType number = CellType('number');
-  static CellType operator = CellType('operator');
-  static CellType equals = CellType('equals');
-  static CellType result = CellType('result');
+  static const CellType empty = CellType('empty');
+  static const CellType number = CellType('number');
+  static const CellType op = CellType('operator');
+  static const CellType equals = CellType('equals');
+  static const CellType result = CellType('result');
 
-  String name;
-  CellType(this.name);
+  final String name;
+  const CellType(this.name);
 
   static List<CellType> values = [
     empty,
@@ -26,14 +26,14 @@ class CellType {
 class Cell {
   CellType type;
   int number;        // solo para number y result
-  String operator;   // solo para operator (+ - * /)
+  String op;   // solo para operator (+ - * /)
   bool fixed = false;
 
   Cell.empty() : type = CellType.empty;
 
   Cell.number(this.number, {this.fixed = false}) : type = CellType.number;
 
-  Cell.operator(this.operator) : type = CellType.operator;
+  Cell.op(this.op) : type = CellType.operator;
 
   Cell.equals() : type = CellType.equals;
 
@@ -46,8 +46,8 @@ class Cell {
         return Cell.empty();
       case CellType.number:
         return Cell.number(null);
-      case CellType.operator:
-        return Cell.operator(null);
+      case CellType.op:
+        return Cell.op(null);
       case CellType.equals:
         return Cell.equals();
       case CellType.result:
@@ -62,7 +62,7 @@ class Cell {
     final c = Cell.empty();
     c.type = type;
     c.number = number;
-    c.operator = operator;
+    c.op = op;
     c.fixed = fixed;
     return c;
   }
