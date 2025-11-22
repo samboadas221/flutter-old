@@ -10,7 +10,7 @@ class Coord {
   Coord(this.r, this.c);
 
   @override
-  bool operator ==(other) => other is Coord && other.r == r && other.c == c;
+  bool op ==(other) => other is Coord && other.r == r && other.c == c;
 
   @override
   int get hashCode => r.hashCode ^ c.hashCode;
@@ -131,7 +131,7 @@ class MatrixPuzzle {
     final cres = grid[rs.r][rs.c];
 
     return ca.type == CellType.number &&
-        cop.type == CellType.operator &&
+        cop.type == CellType.op &&
         cb.type == CellType.number &&
         ceq.type == CellType.equals &&
         cres.type == CellType.result;
@@ -155,7 +155,7 @@ class MatrixPuzzle {
     final B = cb.number;
     final C = cres.number;
 
-    final o = cop.operator;
+    final o = cop.op;
 
     int calc;
 
@@ -198,7 +198,7 @@ class MatrixPuzzle {
           'pos': {'r': r, 'c': c},
           'type': cell.type.toString().split('.').last,
           'number': cell.number,
-          'operator': cell.operator,
+          'op': cell.op,
           'fixed': cell.fixed,
         });
       }
@@ -240,7 +240,7 @@ class MatrixPuzzle {
       final cell = Cell.fromType(t);
 
       cell.number = cj['number'];
-      cell.operator = cj['operator'];
+      cell.op = cj['op'];
       cell.fixed = cj['fixed'] ?? false;
 
       p.grid[r][c] = cell;
