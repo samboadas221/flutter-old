@@ -210,9 +210,9 @@ class _GameScreenState extends State<GameScreen> {
                     return Container(color: Colors.transparent);
                   }
 
-                  if (cell.type == CellType.operator) {
+                  if (cell.type == CellType.op) {
                     bgColor = Colors.grey[300];
-                    display = cell.operator ?? '';
+                    display = cell.op ?? '';
                     textColor = Colors.deepPurple[900];
                   } else if (cell.type == CellType.equals) {
                     bgColor = Colors.grey[300];

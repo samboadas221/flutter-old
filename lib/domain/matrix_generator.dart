@@ -350,8 +350,8 @@ class MatrixGenerator {
           // if existing has a number, it must match desired number (or existing.number==null allowed)
           if (existing.number != null && desired.number != null && existing.number != desired.number) return false;
           // if existing has a fixed number different -> collision (already checked by previous line)
-        } else if (desired.type == CellType.operator) {
-          if (existing.operator != null && desired.operator != null && existing.operator != desired.operator) return false;
+        } else if (desired.type == CellType.op) {
+          if (existing.op != null && desired.op != null && existing.op != desired.op) return false;
         }
         // equals cell has no extra constraints beyond type
       }
@@ -368,8 +368,8 @@ class MatrixGenerator {
 
         if (desired.type == CellType.number || desired.type == CellType.result) {
           if (existing.number != null && desired.number != null && existing.number != desired.number) return false;
-        } else if (desired.type == CellType.operator) {
-          if (existing.operator != null && desired.operator != null && existing.operator != desired.operator) return false;
+        } else if (desired.type == CellType.op) {
+          if (existing.op != null && desired.op != null && existing.op != desired.op) return false;
         }
       }
     }
@@ -553,7 +553,7 @@ class Equation {
   List<Cell> toCells(){
     final List<Cell> cells = [];
     cells.add(Cell.number  (data[0] as int));
-    cells.add(Cell.operator(data[1] as String));
+    cells.add(Cell.op(data[1] as String));
     cells.add(Cell.number  (data[2] as int));
     cells.add(Cell.equals  ());
     cells.add(Cell.result  (data[3] as int));
