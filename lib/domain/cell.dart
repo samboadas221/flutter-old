@@ -33,7 +33,7 @@ class Cell {
 
   Cell.number(this.number, {this.fixed = false}) : type = CellType.number;
 
-  Cell.op(this.op) : type = CellType.operator;
+  Cell.op(this.op) : type = CellType.op;
 
   Cell.equals() : type = CellType.equals;
 
