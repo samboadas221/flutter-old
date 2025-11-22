@@ -43,7 +43,6 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       puzzle = MatrixGenerator.generate(
         difficulty: diffStr,
-        cluePercent: 40,
       );
       selectedNumber = null;
     });

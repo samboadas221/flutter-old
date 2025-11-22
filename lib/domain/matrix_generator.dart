@@ -179,7 +179,7 @@ class MatrixGenerator {
           final List cand = candidates[candIndex++];
           if (cand == null || cand.isEmpty) continue;
           if (cand.length == 1 && cand[0] == -1) continue; // no válido
-          final int requiredValue;
+          int requiredValue;
           // el generateLevel llenó en el orden [A,B,C] para cada parent
           if (k == 0) requiredValue = parent.data[0]; // A
           else if (k == 1) requiredValue = parent.data[2]; // B

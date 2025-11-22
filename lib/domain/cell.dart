@@ -9,7 +9,7 @@ class CellType {
   static const CellType result = CellType._('result');
 
   final String name;
-  const CellType._(this._name);
+  const CellType.(this.name);
 
   static const List<CellType> values = [
     empty,
@@ -20,7 +20,7 @@ class CellType {
   ];
 
   @override
-  String toString() => _name;
+  String toString() => name;
 }
 
 class Cell {
