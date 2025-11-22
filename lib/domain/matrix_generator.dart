@@ -1,88 +1,395 @@
 
-// lib/domain/matrix_generator.dart
-// Generador de puzzles CrossMath basado en la descripción del usuario - 20 Nov 2025
-// Implementación exacta del algoritmo proporcionado
-
 import 'dart:math';
 import 'matrix_puzzle.dart';
 import 'cell.dart';
 
-class MatrixGenerator {
-  static final Random _rnd = Random();
+/*
+DESCRIPCIÓN DEL ALGORIRMO:
 
+1) Primero, crea el tablero y define los 
+   valores máximos:
+     Fácil: Tablero mínimo de 9x9 casillas,
+     máximo de 12x12 casillas. 
+     Número máximo 30, es decir, ninguna 
+     suma o multiplicación puede ser mayor a 30
+     
+     Medio: Mínimo de 11x11, máximo de 15x15.
+     Número máximo 60
+     
+     Difícil: Mínimo de 16x16, 
+     máximo de 20x20. Número máximo 100
+
+2) Genera una ecuación cualquiera y la pone
+en cualquier lugar del tablero (Obviamente 
+no en los bordes para no salirse del tamaño
+del array permitido. Por ejemplo, si el 
+tablero mide 10x10 una ecuación no puede 
+colocarse en la casilla X:8, ya que las 
+ecuaciones ocupan 5 casillas, saliéndose del 
+tablero)
+
+3) Luego de poner la primera ecuación en el
+tablero empieza un loop para poner dos 
+ecuaciones más que sean del tipo inverso 
+(Es decir, si la primera ecuación fue 
+vertical la siguiente será horizontal). 
+Se selecciona una casilla de la ecuación 
+actual (Puede ser un número o un operador,
+ya que sí, los operadores son intersecciones
+válidas), y se usa el número u operador 
+en esa casilla para generar una nueva 
+ecuación, y se pone ya sea hacia la 
+izquierda o la derecha si es horizontal, 
+o hacia arriba o abajo si la ecuaciòn que 
+debe generarse es vertical. En este punto 
+es donde se hacen las verificaciones de 
+colisiones, algo así: Debo poner esta 
+ecuación hacia la izquierda, y estoy en 
+X:8|Y:5, hay alguna ecuación hacia la 
+izquierda que me impida poner la ecuación? 
+Si es así la descarto, un máximo de 5 veces 
+(Es decir, este loop sólo se puede repetir
+5 veces), y si las cinco veces fallas se 
+selecciona otra casilla con un valor para 
+generar ecuaciones.
+
+En resumen, si seleccione el resultado como
+casilla/valor incial para generar otra 
+ecuación que debe ir hacia la izquiera,
+pero las 5 veces falló porque hay alguna 
+colisión hacia la izquierda, entonces 
+selecciono otra casilla, puede ser por 
+ejemplo el signo '=', y si las 5 casillas 
+no pueden generar una ecuaciòn hacia la 
+izquierda (Por cualquier motivo, ya sea 
+porque se sale del tablero o porque hay 
+colisiones), entonces no se genera nada 
+hacia la izquierda y pasamos a intentar 
+generar hacia la derecha.
+
+Y las ecuaciones que sean generadas también
+deben intentar generar más ecuaciones 
+inversas a su orientación, hasta que todos 
+los intentos de generar más ecuaciones 
+fallen. Completando la generación del 
+nivel/puzzle
+
+4) Una vez creado el nivel vamos a rellenar
+el banco. Vamos a ir ecuación por ecuación y
+generaremos un valor entre 1 y 2. Dependiendo
+del valor le vamos a quitar esa misma 
+cantidad de números a la ecuación y los 
+vamos a pasar al banco. Es decir, si sale un 
+uno le quitamos un número a la ecuación, si 
+sale un dos le quitamos dos números (Siempre 
+dejando al menos uno)
+
+5) Comprobaciones finales. Comprobaremos 
+finalmente que las ecuaciones que no se 
+intersectan no se toquen. Y comprobaremos de
+nuevo que las ecuaciones tengan al menos 1 
+números visible (Puede pasar que en alguna
+interseccion, una ecuación que ya había 
+pasado dos números al banco pierda su 
+tercer número cuando la otra ecuación que 
+se intersectaba en esa casilla decidió 
+ocultarlo, dejando a la ecuación con sus 
+tres números ocultos)
+*/
+
+class MatrixGenerator {
+  
+  static final Random random = Random();
+  
   static MatrixPuzzle generate({
     String difficulty = 'easy',
-    int cluePercent = 40,
-  }) {
-    // Paso 1: Crear tablero y definir valores máximos
+  }){
+    // Paso 0: Definir la configuración
     int minSize, maxSize, maxVal;
     if (difficulty == 'easy') {
-      minSize = 9;
+      minSize = 10;
       maxSize = 12;
       maxVal = 30;
     } else if (difficulty == 'medium') {
-      minSize = 11;
+      minSize = 13;
       maxSize = 15;
       maxVal = 60;
     } else {
       minSize = 16;
       maxSize = 20;
-      maxVal = 100;
+      maxVal = 99;
     }
-
-    final int size = minSize + _rnd.nextInt(maxSize - minSize + 1);
+    
+    // Paso 1: Generar el tablero
+    final int size = minSize + random.nextInt(maxSize - minSize + 1);
     final puzzle = MatrixPuzzle(size, size, difficulty: difficulty);
-
-    // Inicializar grid vacío
+    
     for (int row = 0; row < size; row++) {
       for (int col = 0; col < size; col++) {
         puzzle.grid[row][col] = Cell.empty();
       }
     }
-
-    // Paso 2: Generar y colocar la primera ecuación
-    final bool firstHorizontal = _rnd.nextBool();
-    final int maxStart = size - 5;
-    int startR = _rnd.nextInt(maxStart + 1);
-    int startC = _rnd.nextInt(maxStart + 1);
-    final List equationData = _generateEquation(maxVal, difficulty);
-    if (equationData == null) {
-      // Fallback simple si falla (raro)
-      return puzzle; // vacío, pero para no crashear
+    
+    // Paso 2: Generar la primera ecuación
+    final bool firstHorizontal = random.nextBool();
+    final List firstEquationData = generateEquation(maxVal);
+    
+    // Paso 3: Colocar la ecuación en un lugar al azar del tablero
+    int posX;
+    int posY;
+    if(firstHorizontal){
+      posX = random.nextInt(size - 5);
+      posY = random.nextInt(size);
+    } else {
+      posX = random.nextInt(size);
+      posY = random.nextInt(size - 5);
     }
-    _placeEquation(puzzle, firstHorizontal, startR, startC, equationData);
+    
+    Equation firstEquation = Equation(
+      firstHorizontal, 
+      posX,
+      posY,
+      firstEquationData
+    );
+    
+    placeEquation(puzzle, firstEquation);
+    
+    // Paso 4:
+    List<Equation> placedEquations = [firstEquation];
+    List<Equation> frontier = [firstEquation];
+    bool nextHorizontal = !firstHorizontal;
+    int globalIterations = 0;
+    const int MAX_GLOBAL_ITERS = 50; 
+    
+    // Bucle principal: mientras haya ecuaciones en frontier, generar ecuaciones
+    // de orientación opuesta que intersecten en uno de sus valores.
+    while (frontier.isNotEmpty && globalIterations < MAX_GLOBAL_ITERS) {
+      globalIterations++;
+      final List<Equation> currentLevel = List<Equation>.from(frontier);
+      frontier.clear();
+      final List<List> candidates = generateLevel(maxVal, currentLevel);
 
-    // Lista de ecuaciones actuales para expandir
-    List<_Equation> equations = [_Equation(firstHorizontal, startR, startC, equationData)];
+      int candIndex = 0;
+      for (int i = 0; i < currentLevel.length; i++) {
+        final Equation parent = currentLevel[i];
+        int failCount = 0;
+        // por cada parent, generateLevel creó 3 candidatos (A, B, C)
+        for (int k = 0; k < 3; k++) {
+          if (candIndex >= candidates.length) break;
+          final List cand = candidates[candIndex++];
+          if (cand == null || cand.isEmpty) continue;
+          if (cand.length == 1 && cand[0] == -1) continue; // no válido
+          final int requiredValue;
+          // el generateLevel llenó en el orden [A,B,C] para cada parent
+          if (k == 0) requiredValue = parent.data[0]; // A
+          else if (k == 1) requiredValue = parent.data[2]; // B
+          else requiredValue = parent.data[3]; // C (resultado)
 
-    // Paso 3: Expandir recursivamente
-    int index = 0;
-    while (index < equations.length) {
-      _tryExpandEquation(puzzle, equations, equations[index], maxVal, difficulty, size);
-      index++;
+          // posición del valor en el tablero (coordenadas del parent)
+          final valPos = parent.getValuePosition(requiredValue);
+          if (valPos is int) {
+            // getValuePosition devuelve -1 (int) si no lo encuentra; en tal caso saltar
+            continue;
+          }
+          final int vx = (valPos as List)[0];
+          final int vy = (valPos as List)[1];
+
+          // Construir la ecuación candidate con la orientación opuesta a parent
+          final bool candidateHorizontal = nextHorizontal;
+          // cand = [A, op, B, C]
+          final List candData = cand;
+
+          // determinar desplazamiento según qué elemento del candidato contiene requiredValue
+          int slotOffset = -1; // 0 => posición 0, 2 => pos 2, 4 => pos 4 (indexes in cells)
+          if (candData[0] == requiredValue) slotOffset = 0;
+          else if (candData[2] == requiredValue) slotOffset = 2;
+          else if (candData[3] == requiredValue) slotOffset = 4;
+          else {
+            // No coincide (posible si generateEquationWithRequired resolvió con otra colocación) -> saltar
+            continue;
+          }
+
+          // calcular coordenadas (x,y) de la esquina izquierda/arriba de la ecuación
+          int ex, ey;
+          if (candidateHorizontal) {
+            // horizontal occupies x .. x+4 at same y
+            ex = vx - slotOffset; // slotOffset is 0,2,4
+            ey = vy;
+          } else {
+            // vertical occupies y .. y+4 at same x
+            ex = vx;
+            ey = vy - slotOffset;
+          }
+
+          // crear equation candidate
+          final Equation eqCand = Equation(candidateHorizontal, ex, ey, candData);
+
+          // intentar colocar eqCand hasta 5 intentos (si falla, aumentamos failCount)
+          bool placed = false;
+          int attempts = 0;
+          while (attempts < 5 && !placed) {
+            attempts++;
+            if (canPlaceEquationAt(puzzle, eqCand)) {
+              commitEquation(puzzle, eqCand);
+              placed = true;
+            } else {
+              // Si fallo y slotOffset puede variar (por ejemplo para resultado intentar "mover" la ecuación
+              // manteniendo el valor en otra posición), podemos intentar ajustar ligeramente la posición:
+              // intentaremos desplazar +/-1 en la dirección perpendicular (esto da hasta 4 opciones).
+              // esto ayuda a sortear colisiones locales sin cambiar la orientación del eq.
+              bool shiftedAndPlaced = false;
+              for (int shift = 1; shift <= 2 && !shiftedAndPlaced; shift++) {
+                for (int sign = -1; sign <= 1 && !shiftedAndPlaced; sign += 2) {
+                  final Equation shifted = Equation(
+                    eqCand.horizontal,
+                    candidateHorizontal ? (ex + sign * shift) : ex,
+                    candidateHorizontal ? ey : (ey + sign * shift),
+                    candData,
+                  );
+                  if (canPlaceEquationAt(puzzle, shifted)) {
+                    commitEquation(puzzle, shifted);
+                    shiftedAndPlaced = true;
+                    placed = true;
+                  }
+                }
+              }
+              if (!shiftedAndPlaced) {
+                failCount++;
+                // si ya fallamos 5 veces para este parent, salimos de los 3 candidatos restantes
+                if (failCount >= 5) break;
+              }
+            }
+          } // end attempts
+
+        } // end for k (3 candidates per parent)
+      } // end for each parent
+
+      // preparar la siguiente iteración: nextHorizontal alterna cada nivel
+      nextHorizontal = !nextHorizontal;
+
+      // terminar cuando no se añadieron nuevas ecuaciones en esta pasada
+      // (frontier ya fue rellenada en commitEquation; si quedó vacía, no hay más niveles)
+      if (frontier.isEmpty) break;
+    } // end while frontier
+
+    // Paso 4 (banco): por cada ecuación colocada, extraer aleatoriamente 1 o 2 operandos (A/B)
+    // y pasarlos al banco. Nos aseguramos de dejar al menos 1 operando visible por ecuación.
+    for (final eq in placedEquations) {
+      // posiciones de operandos en la ecuación: indices 0 (A) y 2 (B).
+      final List<Coord> operandCoords = [];
+      if (eq.horizontal) {
+        operandCoords.add(Coord(eq.x + 0, eq.y)); // A
+        operandCoords.add(Coord(eq.x + 2, eq.y)); // B
+      } else {
+        operandCoords.add(Coord(eq.x, eq.y + 0)); // A
+        operandCoords.add(Coord(eq.x, eq.y + 2)); // B
+      }
+
+      // contar operandos actualmente visibles (números no nulos)
+      List<int> visibleIdx = [];
+      for (int idx = 0; idx < operandCoords.length; idx++) {
+        final c = operandCoords[idx];
+        if (puzzle.inBounds(c.r, c.c)) {
+          final cell = puzzle.grid[c.r][c.c];
+          if ((cell.type == CellType.number) && (cell.number != null) && !cell.fixed) {
+            visibleIdx.add(idx);
+          }
+        }
+      }
+
+      if (visibleIdx.length <= 1) continue; // no podemos quitar más (ya sólo hay 1 o 0 disponibles)
+
+      // decidir cuántos operandos quitar: 1 o 2, pero no dejar 0 visibles
+      int toRemove = 1 + random.nextInt(2); // 1 o 2
+      if (toRemove >= visibleIdx.length) {
+        toRemove = visibleIdx.length - 1; // aseguremos al menos 1 visible
+      }
+      // seleccionar índices aleatorios de visibleIdx a remover
+      visibleIdx.shuffle(random);
+      final List<int> removeIdxs = visibleIdx.sublist(0, toRemove);
+
+      for (final ridx in removeIdxs) {
+        final coord = operandCoords[ridx];
+        if (!puzzle.inBounds(coord.r, coord.c)) continue;
+        final cell = puzzle.grid[coord.r][coord.c];
+        if (cell.type == CellType.number && cell.number != null && !cell.fixed) {
+          final int val = cell.number;
+          cell.number = null; // quitar del tablero
+          // añadir al banco
+          puzzle.bankPut(val);
+        }
+      }
     }
 
-    // Paso 4: Rellenar el banco
-    _fillBank(puzzle, equations, cluePercent);
-
-    // Paso 5: Comprobaciones finales
-    if (!_finalChecks(puzzle, equations, size)) {
-      // Si falla, regenerar (pero para simplicidad, retornamos como está - se puede loop si se quiere)
-      return generate(difficulty: difficulty, cluePercent: cluePercent);
-    }
-
+    // FIN paso 4: devolvemos el puzzle generado (con ecuaciones colocadas y banco rellenado)
     return puzzle;
+    
+    
   }
+  
+  // HELPER FUNCTIONS:
+  
+  // helper: comprueba si una ecuación puede colocarse (compatibilidad/collision)
+  static bool canPlaceEquationAt(MatrixPuzzle p, Equation eq) {
+    if (eq.horizontal) {
+      for (int i = 0; i < 5; i++) {
+        final int cx = eq.x + i;
+        final int cy = eq.y;
+        if (!p.inBounds(cx, cy)) return false;
+        final Cell existing = p.grid[cx][cy];
+        final Cell desired = eq.toCells()[i];
 
-  // Genera datos de ecuación [A, op, B, C]
-  static List _generateEquation(int maxVal, String difficulty) {
+        // empty is ok
+        if (existing.type == CellType.empty) continue;
+
+        // if types differ -> collision
+        if (existing.type != desired.type) return false;
+
+        // same type: check value compatibility
+        if (desired.type == CellType.number || desired.type == CellType.result) {
+          // if existing has a number, it must match desired number (or existing.number==null allowed)
+          if (existing.number != null && desired.number != null && existing.number != desired.number) return false;
+          // if existing has a fixed number different -> collision (already checked by previous line)
+        } else if (desired.type == CellType.operator) {
+          if (existing.operator != null && desired.operator != null && existing.operator != desired.operator) return false;
+        }
+        // equals cell has no extra constraints beyond type
+      }
+    } else {
+      for (int i = 0; i < 5; i++) {
+        final int cx = eq.x;
+        final int cy = eq.y + i;
+        if (!p.inBounds(cx, cy)) return false;
+        final Cell existing = p.grid[cx][cy];
+        final Cell desired = eq.toCells()[i];
+
+        if (existing.type == CellType.empty) continue;
+        if (existing.type != desired.type) return false;
+
+        if (desired.type == CellType.number || desired.type == CellType.result) {
+          if (existing.number != null && desired.number != null && existing.number != desired.number) return false;
+        } else if (desired.type == CellType.operator) {
+          if (existing.operator != null && desired.operator != null && existing.operator != desired.operator) return false;
+        }
+      }
+    }
+    return true;
+  }
+  
+  // helper: coloca la ecuación y registra que fue añadida
+  void commitEquation(MatrixPuzzle p, Equation eq) {
+    placeEquation(p, eq);
+    placedEquations.add(eq);
+    frontier.add(eq);
+  }
+  
+  static List generateEquation(int maxVal) {
     final List<String> ops = ['+', '-', '*', '/'];
-    String op = ops[_rnd.nextInt(ops.length)];
-
+    String op = ops[random.nextInt(ops.length)];
     int A, B, C;
     for (int trial = 0; trial < 50; trial++) {
-      A = 1 + _rnd.nextInt(maxVal);
-      B = 1 + _rnd.nextInt(maxVal);
+      A = 1 + random.nextInt(maxVal);
+      B = 1 + random.nextInt(maxVal);
       if (op == '+') C = A + B;
       else if (op == '-') {
         C = A - B;
@@ -96,169 +403,160 @@ class MatrixGenerator {
     }
     return null;
   }
-
-  // Coloca la ecuación en el grid
-  static void _placeEquation(MatrixPuzzle p, bool horizontal, int r, int c, List data) {
-    final int A = data[0];
-    final String op = data[1];
-    final int B = data[2];
-    final int C = data[3];
-
-    if (horizontal) {
-      p.grid[r][c] = Cell.number(A, fixed: false);
-      p.grid[r][c + 1] = Cell.operator(op);
-      p.grid[r][c + 2] = Cell.number(B, fixed: false);
-      p.grid[r][c + 3] = Cell.equals();
-      p.grid[r][c + 4] = Cell.result(C, fixed: false);
+  
+  static List generateEquationWithRequired(int maxVal, int requiredValue) {
+    final List<String> ops = ['+', '-', '*', '/'];
+    if (maxVal < 1 || requiredValue < 1) return [-1];
+    for (int trial = 0; trial < 1000; trial++) {
+      final String op = ops[random.nextInt(ops.length)];
+      int A, B, C;
+      
+      final int placement = random.nextInt(3); 
+  
+      if (placement == 0) {
+        A = requiredValue;
+        B = 1 + random.nextInt(maxVal);
+        if (op == '+') {
+          C = A + B;
+        } else if (op == '-') {
+          C = A - B;
+          if (C < 1) continue;
+        } else if (op == '*') {
+          C = A * B;
+        } else {
+          if (B == 0 || A % B != 0) continue;
+          C = A ~/ B;
+        }
+        if (C >= 1 && C <= maxVal) return [A, op, B, C];
+        continue;
+      }
+  
+      if (placement == 1) {
+        B = requiredValue;
+        A = 1 + random.nextInt(maxVal);
+        if (op == '+') {
+          C = A + B;
+        } else if (op == '-') {
+          C = A - B;
+          if (C < 1) continue;
+        } else if (op == '*') {
+          C = A * B;
+        } else {
+          if (B == 0 || A % B != 0) continue;
+          C = A ~/ B;
+        }
+        if (C >= 1 && C <= maxVal) return [A, op, B, C];
+        continue;
+      }
+      
+      C = requiredValue;
+      if (op == '+') {
+        A = 1 + random.nextInt(maxVal);
+        B = C - A;
+        if (B >= 1 && B <= maxVal) return [A, op, B, C];
+        continue;
+      } else if (op == '-') {
+        final int maxB = maxVal - C;
+        if (maxB < 1) continue;
+        B = 1 + random.nextInt(maxB);
+        A = C + B;
+        if (A >= 1 && A <= maxVal) return [A, op, B, C];
+        continue;
+      } else if (op == '*') {
+        int attempts = 0;
+        while (attempts < 20) {
+          A = 1 + random.nextInt(maxVal);
+          if (A != 0 && C % A == 0) {
+            B = C ~/ A;
+            if (B >= 1 && B <= maxVal) return [A, op, B, C];
+          }
+          attempts++;
+        }
+        continue;
+      } else {
+        int attempts = 0;
+        while (attempts < 20) {
+          B = 1 + random.nextInt(maxVal);
+          A = C * B;
+          if (A >= 1 && A <= maxVal) return [A, op, B, C];
+          attempts++;
+        }
+        continue;
+      }
+    }
+    return [-1];
+  }
+  
+  static void placeEquation(MatrixPuzzle puzzle, Equation equation){
+    List<Cell> cells_equation = equation.toCells();
+    if(equation.horizontal){
+      puzzle.grid[equation.x+0][equation.y] = cells_equation[0];
+      puzzle.grid[equation.x+1][equation.y] = cells_equation[1];
+      puzzle.grid[equation.x+2][equation.y] = cells_equation[2];
+      puzzle.grid[equation.x+3][equation.y] = cells_equation[3];
+      puzzle.grid[equation.x+4][equation.y] = cells_equation[4];
     } else {
-      p.grid[r][c] = Cell.number(A, fixed: false);
-      p.grid[r + 1][c] = Cell.operator(op);
-      p.grid[r + 2][c] = Cell.number(B, fixed: false);
-      p.grid[r + 3][c] = Cell.equals();
-      p.grid[r + 4][c] = Cell.result(C, fixed: false);
+      puzzle.grid[equation.x][equation.y+0] = cells_equation[0];
+      puzzle.grid[equation.x][equation.y+1] = cells_equation[1];
+      puzzle.grid[equation.x][equation.y+2] = cells_equation[2];
+      puzzle.grid[equation.x][equation.y+3] = cells_equation[3];
+      puzzle.grid[equation.x][equation.y+4] = cells_equation[4];
     }
   }
   
+  static List<List> generateLevel(int maxVal, List<Equation> requests){
+    List<List> equations = [];
+    for(int i = 0; i < requests.length; i++){
+      equations.add(
+        generateEquationWithRequired(
+          maxVal, requests[i].data[0]
+        )
+      );
+      equations.add(
+        generateEquationWithRequired(
+          maxVal, requests[i].data[2]
+        )
+      );
+      equations.add(
+        generateEquationWithRequired(
+          maxVal, requests[i].data[3]
+        )
+      );
+    }
+    return equations;
+  }
   
-  // Intenta expandir una ecuación generando 2 nuevas inversas
-  static void _tryExpandEquation(MatrixPuzzle p, List<_Equation> equations, _Equation current, int maxVal, String difficulty, int size) {
-    final bool newHorizontal = !current.horizontal;
 
-    // Direcciones: izquierda/arriba = 0, derecha/abajo = 1
-    for (int dir = 0; dir < 2; dir++) {
-      for (int attempt = 0; attempt < 5; attempt++) {
-        // Seleccionar casilla aleatoria de la ecuación actual (pos 0-4)
-        final int basePos = _rnd.nextInt(5);
-
-        final int baseR = current.horizontal ? current.row : current.row + basePos;
-        final int baseC = current.horizontal ? current.col + basePos : current.col;
-
-        // Elegir posición en la NUEVA ecuación donde se cruzará (0-4)
-        final int crossPos = _rnd.nextInt(5);
-
-        // Calcular start de nueva para cruzar en base (depende de dirección)
-        int newR, newC;
-        if (newHorizontal) {
-          newR = baseR;
-          newC = dir == 0 ? baseC - crossPos : baseC + (4 - crossPos); // izquierda o derecha
-        } else {
-          newR = dir == 0 ? baseR - crossPos : baseR + (4 - crossPos);
-          newC = baseC;
-        }
-
-        // Verificar límites
-        if (newR < 0 || newR + (newHorizontal ? 0 : 4) >= size || newC < 0 || newC + (newHorizontal ? 4 : 0) >= size) continue;
-
-        // Verificar colisiones (ninguna celda ocupada, excepto el cruce en base)
-        bool collision = false;
-        for (int i = 0; i < 5; i++) {
-          int cr = newHorizontal ? newR : newR + i;
-          int cc = newHorizontal ? newC + i : newC;
-          if (cr == baseR && cc == baseC) continue; // permitir el cruce
-          if (p.grid[cr][cc].type != CellType.empty) {
-            collision = true;
-            break;
-          }
-        }
-        if (collision) continue;
-
-        // Generar nueva ecuación
-        final List newData = _generateEquation(maxVal, difficulty);
-        if (newData == null) continue;
-
-        // Colocar
-        _placeEquation(p, newHorizontal, newR, newC, newData);
-
-        // Añadir a lista
-        equations.add(_Equation(newHorizontal, newR, newC, newData));
-        break; // Éxito en esta dirección
-      }
-    }
-  }
-
-  // Paso 4: Rellenar banco
-  static void _fillBank(MatrixPuzzle p, List<_Equation> equations, int cluePercent) {
-    p.bankCounts = {};
-    for (final eq in equations) {
-      final int numToHide = 1 + _rnd.nextInt(2); // 1 o 2
-      final List<Coord> nums = eq.horizontal
-          ? [Coord(eq.row, eq.col), Coord(eq.row, eq.col + 2), Coord(eq.row, eq.col + 4)]
-          : [Coord(eq.row, eq.col), Coord(eq.row + 2, eq.col), Coord(eq.row + 4, eq.col)];
-
-      nums.shuffle(_rnd);
-      int hidden = 0;
-      for (final coord in nums) {
-        if (hidden < numToHide && hidden < nums.length - 1) {
-          final Cell cell = p.grid[coord.r][coord.c];
-          p.bankCounts[cell.number] = (p.bankCounts[cell.number] ?? 0) + 1;
-          cell.number = null;
-          cell.fixed = false;
-          hidden++;
-        } else {
-          final Cell cell = p.grid[coord.r][coord.c];
-          cell.fixed = true;
-        }
-      }
-    }
-  }
-
-  // Paso 5: Comprobaciones finales
-  static bool _finalChecks(MatrixPuzzle p, List<_Equation> equations, int size) {
-    // Comprobar que ecuaciones no se toquen sin intersección
-    for (int i = 0; i < equations.length; i++) {
-      for (int j = i + 1; j < equations.length; j++) {
-        final eq1 = equations[i];
-        final eq2 = equations[j];
-
-        // Si mismo tipo, verificar distancia >1
-        if (eq1.horizontal == eq2.horizontal) {
-          int dist = eq1.horizontal ? (eq1.row - eq2.row).abs() : (eq1.col - eq2.col).abs();
-          if (dist <= 1) return false;
-        } else {
-          // Diferente tipo, verificar si se cruzan o están demasiado cerca
-          bool intersects = false;
-          for (int k = 0; k < 5; k++) {
-            int r1 = eq1.horizontal ? eq1.row : eq1.row + k;
-            int c1 = eq1.horizontal ? eq1.col + k : eq1.col;
-            for (int m = 0; m < 5; m++) {
-              int r2 = eq2.horizontal ? eq2.row : eq2.row + m;
-              int c2 = eq2.horizontal ? eq2.col + m : eq2.col;
-              if (r1 == r2 && c1 == c2) {
-                intersects = true;
-                break;
-              }
-            }
-            if (intersects) break;
-          }
-          if (!intersects) {
-            // No intersectan, verificar distancia >1
-            int minDistR = (eq1.row - eq2.row).abs();
-            int minDistC = (eq1.col - eq2.col).abs();
-            if (minDistR <= 1 || minDistC <= 1) return false;
-          }
-        }
-      }
-    }
-
-    // Comprobar al menos 1 número visible por ecuación
-    for (final eq in equations) {
-      int visible = 0;
-      final List<Coord> nums = eq.horizontal
-          ? [Coord(eq.row, eq.col), Coord(eq.row, eq.col + 2), Coord(eq.row, eq.col + 4)]
-          : [Coord(eq.row, eq.col), Coord(eq.row + 2, eq.col), Coord(eq.row + 4, eq.col)];
-      for (final coord in nums) {
-        if (p.grid[coord.r][coord.c].number != null) visible++;
-      }
-      if (visible < 1) return false;
-    }
-
-    return true;
-  }
 }
 
-class _Equation {
-  final bool horizontal;
-  final int row, col;
-  final List data; // [A, op, B, C]
-  _Equation(this.horizontal, this.row, this.col, this.data);
+class Equation {
+  bool horizontal;
+  int x, y;
+  List data; // [A, op, B, C]
+  Equation(this.horizontal, this.x, this.y, this.data);
+  
+  List<int> getValuePosition(int value){
+    if(data.contains(value)){
+      if(horizontal){
+        if(data[0] == value){ return [x, y]; }
+        if(data[2] == value){ return [x+2, y]; }
+        if(data[3] == value){ return [x+4, y]; }
+      } else {
+        if(data[0] == value){ return [x, y]; }
+        if(data[2] == value){ return [x, y+2]; }
+        if(data[3] == value){ return [x, y+4]; }
+      }
+    }
+    return -1;
+  }
+  
+  List<Cell> toCells(){
+    final List<Cell> cells = [];
+    cells.add(Cell.number  (data[0] as int));
+    cells.add(Cell.operator(data[1] as String));
+    cells.add(Cell.number  (data[2] as int));
+    cells.add(Cell.equals  ());
+    cells.add(Cell.result  (data[3] as int));
+    return cells;
+  }
 }

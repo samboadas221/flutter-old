@@ -8,7 +8,7 @@ class CellType {
   static const CellType equals = CellType._('equals');
   static const CellType result = CellType._('result');
 
-  final String _name;
+  final String name;
   const CellType._(this._name);
 
   static const List<CellType> values = [
@@ -67,22 +67,4 @@ class Cell {
     return c;
   }
 
-  // Útil para debug
-  @override
-  String toString() {
-    switch (type) {
-      case CellType.empty:
-        return ' ';
-      case CellType.number:
-        return fixed ? '[$number]' : '$number';
-      case CellType.operator:
-        return operator;
-      case CellType.equals:
-        return '=';
-      case CellType.result:
-        return fixed ? '[$number]' : '$number';
-      default:
-        return '?';
-    }
-  }
 }
