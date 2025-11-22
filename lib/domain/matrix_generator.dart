@@ -230,7 +230,7 @@ class MatrixGenerator {
           while (attempts < 5 && !placed) {
             attempts++;
             if (canPlaceEquationAt(puzzle, eqCand)) {
-              commitEquation(puzzle, eqCand, placedEquations);
+              commitEquation(puzzle, eqCand, placedEquations, frontier);
               placed = true;
             } else {
               // Si fallo y slotOffset puede variar (por ejemplo para resultado intentar "mover" la ecuación
@@ -247,7 +247,7 @@ class MatrixGenerator {
                     candData,
                   );
                   if (canPlaceEquationAt(puzzle, shifted)) {
-                    commitEquation(puzzle, shifted, placedEquations);
+                    commitEquation(puzzle, shifted, placedEquations, frontier);
                     shiftedAndPlaced = true;
                     placed = true;
                   }
@@ -377,7 +377,7 @@ class MatrixGenerator {
   }
   
   // helper: coloca la ecuación y registra que fue añadida
-  static void commitEquation(MatrixPuzzle p, Equation eq, List<Equation> placedEquations) {
+  static void commitEquation(MatrixPuzzle p, Equation eq, List<Equation> placedEquations, List<equation> frontier) {
     placeEquation(p, eq);
     placedEquations.add(eq);
     frontier.add(eq);
