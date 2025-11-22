@@ -377,7 +377,7 @@ class MatrixGenerator {
   }
   
   // helper: coloca la ecuación y registra que fue añadida
-  static void commitEquation(MatrixPuzzle p, Equation eq, List<Equation> placedEquations, List<equation> frontier) {
+  static void commitEquation(MatrixPuzzle p, Equation eq, List<Equation> placedEquations, List<Equation> frontier) {
     placeEquation(p, eq);
     placedEquations.add(eq);
     frontier.add(eq);

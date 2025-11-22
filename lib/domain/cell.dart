@@ -9,7 +9,7 @@ class CellType {
   static const CellType result = CellType('result');
 
   String name;
-  const CellType(this.name);
+  CellType(this.name);
 
   static const List<CellType> values = [
     empty,
