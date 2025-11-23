@@ -154,8 +154,14 @@ class MatrixGenerator {
     
     placeEquation(puzzle, firstEquation);
     
-    // Paso 4:
-    // Construye la lista de coords que ocuparía eq
+    // PASO 4:
+    // Asegurar que toda ecuación nueva INTERSECTA realmente a la existente.
+    // No se permiten "shifts" que rompan la intersección (esto causaba
+    // ecuaciones separadas). También se impone 1 casilla de separación
+    // para celdas que NO forman parte de la misma ecuación.
+    // ------------------------------------------------------------
+
+    // devuelve coords ocupadas por eq como lista de [r,c]
     List<List<int>> _coordsFor(Equation eq) {
       final List<List<int>> out = [];
       if (eq.horizontal) {
@@ -166,15 +172,14 @@ class MatrixGenerator {
       return out;
     }
 
-    // Comprueba si una coordenada está dentro de la lista coords
     bool _coordsContains(List<List<int>> coords, int r, int c) {
-      for (final cc in coords) {
-        if (cc[0] == r && cc[1] == c) return true;
-      }
+      for (final cc in coords) if (cc[0] == r && cc[1] == c) return true;
       return false;
     }
 
-    // Nuevo canPlaceEquationAt que impone separación mínima (4-neighbors)
+    // canPlace: además de compatibilidad en las mismas casillas,
+    // impone que NINGUNA celda objetivo tenga vecinos ocupados
+    // (4-direcciones) que no formen parte de la misma ecuación.
     bool canPlaceEquationAt(MatrixPuzzle p, Equation eq) {
       final desiredCells = eq.toCells();
       final coords = _coordsFor(eq);
@@ -183,25 +188,24 @@ class MatrixGenerator {
         final int cx = coords[i][0];
         final int cy = coords[i][1];
 
-        // Debe caber en la malla
+        // debe caber
         if (!p.inBounds(cx, cy)) return false;
 
         final Cell existing = p.grid[cx][cy];
         final Cell desired = desiredCells[i];
 
-        // Si ya hay algo en la casilla: deben ser compatibles (mismo tipo y valor/op)
+        // si hay algo en la casilla: han de ser compatibles
         if (existing.type != CellType.empty) {
           if (existing.type != desired.type) return false;
-
-          if (desired.type == CellType.number || desired.type == CellType.result) {
-            if (existing.number != null && desired.number != null && existing.number != desired.number) return false;
-          } else if (desired.type == CellType.op) {
-            if (existing.op != null && desired.op != null && existing.op != desired.op) return false;
-          }
+          if ((desired.type == CellType.number || desired.type == CellType.result) &&
+              existing.number != null && desired.number != null &&
+              existing.number != desired.number) return false;
+          if (desired.type == CellType.op &&
+              existing.op != null && desired.op != null &&
+              existing.op != desired.op) return false;
         }
 
-        // Verificar vecinos (arriba/abajo/izq/der). Si un vecino está ocupado y NO forma
-        // parte de las coordenadas de esta misma ecuación -> rechazo (obliga 1 casilla de separación)
+        // vecinos 4-dir: si alguno está ocupado y NO pertenece a coords -> rechazo
         final List<List<int>> neigh = [
           [cx - 1, cy],
           [cx + 1, cy],
@@ -214,7 +218,7 @@ class MatrixGenerator {
           final nc = n[1];
           if (!p.inBounds(nr, nc)) continue;
 
-          // Si el vecino es una celda que esta ecuación también ocuparía, ignorarla (es solapamiento)
+          // si el vecino sería una casilla de esta misma ecuación, ignorarlo
           if (_coordsContains(coords, nr, nc)) continue;
 
           if (p.grid[nr][nc].type != CellType.empty) {
@@ -226,48 +230,36 @@ class MatrixGenerator {
       return true;
     }
 
-    // placeEquation que respeta celdas existentes (no sobrescribe)
+    // coloca la ecuación sin sobrescribir celdas existentes (preserva intersecciones reales)
     void placeEquationRespecting(MatrixPuzzle puzzle, Equation equation) {
       final List<Cell> cells_equation = equation.toCells();
-      if (equation.horizontal) {
-        for (int i = 0; i < 5; i++) {
-          final int cx = equation.x + i;
-          final int cy = equation.y;
-          final existing = puzzle.grid[cx][cy];
-          if (existing.type == CellType.empty) {
-            puzzle.grid[cx][cy] = cells_equation[i];
-          } else {
-            // existente no vacío: asumimos que canPlaceEquationAt ya verificó compatibilidad,
-            // así que no sobrescribimos para preservar intersecciones.
-          }
-        }
-      } else {
-        for (int i = 0; i < 5; i++) {
-          final int cx = equation.x;
-          final int cy = equation.y + i;
-          final existing = puzzle.grid[cx][cy];
-          if (existing.type == CellType.empty) {
-            puzzle.grid[cx][cy] = cells_equation[i];
-          } else {
-            // mantener existente
-          }
+      final coords = _coordsFor(equation);
+      for (int i = 0; i < coords.length; i++) {
+        final int cx = coords[i][0];
+        final int cy = coords[i][1];
+        if (!puzzle.inBounds(cx, cy)) continue;
+        final existing = puzzle.grid[cx][cy];
+        if (existing.type == CellType.empty) {
+          puzzle.grid[cx][cy] = cells_equation[i];
+        } else {
+          // ya existe: asumimos compatibilidad (canPlaceEquationAt la comprobó)
+          // no sobrescribimos para mantener la referencia compartida en intersecciones
         }
       }
     }
 
-    // commitEquation actualizado para usar placeEquationRespecting
     void commitEquation(MatrixPuzzle p, Equation eq, List<Equation> placedEquations, List<Equation> frontier) {
       placeEquationRespecting(p, eq);
       placedEquations.add(eq);
       frontier.add(eq);
     }
 
-    // --- ahora continúa el flujo original usando las nuevas funciones ---
+    // flujo principal: solo intentos que preserven la intersección exacta
     List<Equation> placedEquations = [firstEquation];
     List<Equation> frontier = [firstEquation];
     bool nextHorizontal = !firstHorizontal;
     int globalIterations = 0;
-    const int MAX_GLOBAL_ITERS = 50;
+    const int MAX_GLOBAL_ITERS = 200;
 
     while (frontier.isNotEmpty && globalIterations < MAX_GLOBAL_ITERS) {
       globalIterations++;
@@ -280,6 +272,7 @@ class MatrixGenerator {
         final Equation parent = currentLevel[i];
         int failCount = 0;
 
+        // por cada parent intentamos sus 3 candidatos; **NUNCA** hacemos shifts que rompan la intersección
         for (int k = 0; k < 3; k++) {
           if (candIndex >= candidates.length) break;
           final List cand = candidates[candIndex++];
@@ -291,7 +284,7 @@ class MatrixGenerator {
           else requiredValue = parent.data[3];
 
           final valPos = parent.getValuePosition(requiredValue);
-          if (valPos is int) continue;
+          if (valPos is int) continue; // no encontró la posición (salta)
           final int vx = (valPos as List)[0];
           final int vy = (valPos as List)[1];
 
@@ -315,43 +308,22 @@ class MatrixGenerator {
 
           final Equation eqCand = Equation(candidateHorizontal, ex, ey, candData);
 
-          bool placed = false;
-          int attempts = 0;
-          while (attempts < 5 && !placed) {
-            attempts++;
-            if (canPlaceEquationAt(puzzle, eqCand)) {
-              commitEquation(puzzle, eqCand, placedEquations, frontier);
-              placed = true;
-            } else {
-              // intentos de desplazamiento local para sortear colisiones respetando la regla de separación
-              bool shiftedAndPlaced = false;
-              for (int shift = 1; shift <= 2 && !shiftedAndPlaced; shift++) {
-                for (int sign = -1; sign <= 1 && !shiftedAndPlaced; sign += 2) {
-                  final Equation shifted = Equation(
-                    eqCand.horizontal,
-                    candidateHorizontal ? (ex + sign * shift) : ex,
-                    candidateHorizontal ? ey : (ey + sign * shift),
-                    candData,
-                  );
-                  if (canPlaceEquationAt(puzzle, shifted)) {
-                    commitEquation(puzzle, shifted, placedEquations, frontier);
-                    shiftedAndPlaced = true;
-                    placed = true;
-                  }
-                }
-              }
-              if (!shiftedAndPlaced) {
-                failCount++;
-                if (failCount >= 5) break;
-              }
-            }
+          // Intentos: solo colocar EXACTAMENTE en (ex,ey) — si no cabe, lo descartamos.
+          if (canPlaceEquationAt(puzzle, eqCand)) {
+            commitEquation(puzzle, eqCand, placedEquations, frontier);
+          } else {
+            failCount++;
+            if (failCount >= 5) break;
+            // NO substituir por desplazamientos que rompan la intersección.
+            // Simplemente se intentará con el siguiente candidato/parent.
           }
-        }
-      }
+        } // end for k
+      } // end for parents
 
       nextHorizontal = !nextHorizontal;
+      // si frontier quedó vacío, no hay más ecuaciones que se puedan generar intersectando la red actual
       if (frontier.isEmpty) break;
-    }
+    } // end while
 
     // Relleno del banco (igual que antes)
     for (final eq in placedEquations) {
