@@ -195,8 +195,8 @@ class MatrixGenerator {
 
           if (desired.type == CellType.number || desired.type == CellType.result) {
             if (existing.number != null && desired.number != null && existing.number != desired.number) return false;
-          } else if (desired.type == CellType.operator) {
-            if (existing.operator != null && desired.operator != null && existing.operator != desired.operator) return false;
+          } else if (desired.type == CellType.op) {
+            if (existing.op != null && desired.op != null && existing.op != desired.op) return false;
           }
         }
 
@@ -397,9 +397,6 @@ class MatrixGenerator {
     }
 
     return puzzle;
-    
-    
-    
   }
   
   // HELPER FUNCTIONS:
