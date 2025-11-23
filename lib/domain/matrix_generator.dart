@@ -155,14 +155,120 @@ class MatrixGenerator {
     placeEquation(puzzle, firstEquation);
     
     // Paso 4:
+    // Construye la lista de coords que ocuparía eq
+    List<List<int>> _coordsFor(Equation eq) {
+      final List<List<int>> out = [];
+      if (eq.horizontal) {
+        for (int i = 0; i < 5; i++) out.add([eq.x + i, eq.y]);
+      } else {
+        for (int i = 0; i < 5; i++) out.add([eq.x, eq.y + i]);
+      }
+      return out;
+    }
+
+    // Comprueba si una coordenada está dentro de la lista coords
+    bool _coordsContains(List<List<int>> coords, int r, int c) {
+      for (final cc in coords) {
+        if (cc[0] == r && cc[1] == c) return true;
+      }
+      return false;
+    }
+
+    // Nuevo canPlaceEquationAt que impone separación mínima (4-neighbors)
+    bool canPlaceEquationAt(MatrixPuzzle p, Equation eq) {
+      final desiredCells = eq.toCells();
+      final coords = _coordsFor(eq);
+
+      for (int i = 0; i < coords.length; i++) {
+        final int cx = coords[i][0];
+        final int cy = coords[i][1];
+
+        // Debe caber en la malla
+        if (!p.inBounds(cx, cy)) return false;
+
+        final Cell existing = p.grid[cx][cy];
+        final Cell desired = desiredCells[i];
+
+        // Si ya hay algo en la casilla: deben ser compatibles (mismo tipo y valor/op)
+        if (existing.type != CellType.empty) {
+          if (existing.type != desired.type) return false;
+
+          if (desired.type == CellType.number || desired.type == CellType.result) {
+            if (existing.number != null && desired.number != null && existing.number != desired.number) return false;
+          } else if (desired.type == CellType.operator) {
+            if (existing.operator != null && desired.operator != null && existing.operator != desired.operator) return false;
+          }
+        }
+
+        // Verificar vecinos (arriba/abajo/izq/der). Si un vecino está ocupado y NO forma
+        // parte de las coordenadas de esta misma ecuación -> rechazo (obliga 1 casilla de separación)
+        final List<List<int>> neigh = [
+          [cx - 1, cy],
+          [cx + 1, cy],
+          [cx, cy - 1],
+          [cx, cy + 1],
+        ];
+
+        for (final n in neigh) {
+          final nr = n[0];
+          final nc = n[1];
+          if (!p.inBounds(nr, nc)) continue;
+
+          // Si el vecino es una celda que esta ecuación también ocuparía, ignorarla (es solapamiento)
+          if (_coordsContains(coords, nr, nc)) continue;
+
+          if (p.grid[nr][nc].type != CellType.empty) {
+            return false; // vecino ocupado por otra ecuación -> demasiado cerca
+          }
+        }
+      }
+
+      return true;
+    }
+
+    // placeEquation que respeta celdas existentes (no sobrescribe)
+    void placeEquationRespecting(MatrixPuzzle puzzle, Equation equation) {
+      final List<Cell> cells_equation = equation.toCells();
+      if (equation.horizontal) {
+        for (int i = 0; i < 5; i++) {
+          final int cx = equation.x + i;
+          final int cy = equation.y;
+          final existing = puzzle.grid[cx][cy];
+          if (existing.type == CellType.empty) {
+            puzzle.grid[cx][cy] = cells_equation[i];
+          } else {
+            // existente no vacío: asumimos que canPlaceEquationAt ya verificó compatibilidad,
+            // así que no sobrescribimos para preservar intersecciones.
+          }
+        }
+      } else {
+        for (int i = 0; i < 5; i++) {
+          final int cx = equation.x;
+          final int cy = equation.y + i;
+          final existing = puzzle.grid[cx][cy];
+          if (existing.type == CellType.empty) {
+            puzzle.grid[cx][cy] = cells_equation[i];
+          } else {
+            // mantener existente
+          }
+        }
+      }
+    }
+
+    // commitEquation actualizado para usar placeEquationRespecting
+    void commitEquation(MatrixPuzzle p, Equation eq, List<Equation> placedEquations, List<Equation> frontier) {
+      placeEquationRespecting(p, eq);
+      placedEquations.add(eq);
+      frontier.add(eq);
+    }
+
+    // --- ahora continúa el flujo original usando las nuevas funciones ---
     List<Equation> placedEquations = [firstEquation];
     List<Equation> frontier = [firstEquation];
     bool nextHorizontal = !firstHorizontal;
     int globalIterations = 0;
-    const int MAX_GLOBAL_ITERS = 50; 
-    
-    // Bucle principal: mientras haya ecuaciones en frontier, generar ecuaciones
-    // de orientación opuesta que intersecten en uno de sus valores.
+    const int MAX_GLOBAL_ITERS = 50;
+
     while (frontier.isNotEmpty && globalIterations < MAX_GLOBAL_ITERS) {
       globalIterations++;
       final List<Equation> currentLevel = List<Equation>.from(frontier);
@@ -173,58 +279,42 @@ class MatrixGenerator {
       for (int i = 0; i < currentLevel.length; i++) {
         final Equation parent = currentLevel[i];
         int failCount = 0;
-        // por cada parent, generateLevel creó 3 candidatos (A, B, C)
+
         for (int k = 0; k < 3; k++) {
           if (candIndex >= candidates.length) break;
           final List cand = candidates[candIndex++];
           if (cand == null || cand.isEmpty) continue;
-          if (cand.length == 1 && cand[0] == -1) continue; // no válido
+          if (cand.length == 1 && cand[0] == -1) continue;
           int requiredValue;
-          // el generateLevel llenó en el orden [A,B,C] para cada parent
-          if (k == 0) requiredValue = parent.data[0]; // A
-          else if (k == 1) requiredValue = parent.data[2]; // B
-          else requiredValue = parent.data[3]; // C (resultado)
+          if (k == 0) requiredValue = parent.data[0];
+          else if (k == 1) requiredValue = parent.data[2];
+          else requiredValue = parent.data[3];
 
-          // posición del valor en el tablero (coordenadas del parent)
           final valPos = parent.getValuePosition(requiredValue);
-          if (valPos is int) {
-            // getValuePosition devuelve -1 (int) si no lo encuentra; en tal caso saltar
-            continue;
-          }
+          if (valPos is int) continue;
           final int vx = (valPos as List)[0];
           final int vy = (valPos as List)[1];
 
-          // Construir la ecuación candidate con la orientación opuesta a parent
           final bool candidateHorizontal = nextHorizontal;
-          // cand = [A, op, B, C]
           final List candData = cand;
 
-          // determinar desplazamiento según qué elemento del candidato contiene requiredValue
-          int slotOffset = -1; // 0 => posición 0, 2 => pos 2, 4 => pos 4 (indexes in cells)
+          int slotOffset = -1;
           if (candData[0] == requiredValue) slotOffset = 0;
           else if (candData[2] == requiredValue) slotOffset = 2;
           else if (candData[3] == requiredValue) slotOffset = 4;
-          else {
-            // No coincide (posible si generateEquationWithRequired resolvió con otra colocación) -> saltar
-            continue;
-          }
+          else continue;
 
-          // calcular coordenadas (x,y) de la esquina izquierda/arriba de la ecuación
           int ex, ey;
           if (candidateHorizontal) {
-            // horizontal occupies x .. x+4 at same y
-            ex = vx - slotOffset; // slotOffset is 0,2,4
+            ex = vx - slotOffset;
             ey = vy;
           } else {
-            // vertical occupies y .. y+4 at same x
             ex = vx;
             ey = vy - slotOffset;
           }
 
-          // crear equation candidate
           final Equation eqCand = Equation(candidateHorizontal, ex, ey, candData);
 
-          // intentar colocar eqCand hasta 5 intentos (si falla, aumentamos failCount)
           bool placed = false;
           int attempts = 0;
           while (attempts < 5 && !placed) {
@@ -233,10 +323,7 @@ class MatrixGenerator {
               commitEquation(puzzle, eqCand, placedEquations, frontier);
               placed = true;
             } else {
-              // Si fallo y slotOffset puede variar (por ejemplo para resultado intentar "mover" la ecuación
-              // manteniendo el valor en otra posición), podemos intentar ajustar ligeramente la posición:
-              // intentaremos desplazar +/-1 en la dirección perpendicular (esto da hasta 4 opciones).
-              // esto ayuda a sortear colisiones locales sin cambiar la orientación del eq.
+              // intentos de desplazamiento local para sortear colisiones respetando la regla de separación
               bool shiftedAndPlaced = false;
               for (int shift = 1; shift <= 2 && !shiftedAndPlaced; shift++) {
                 for (int sign = -1; sign <= 1 && !shiftedAndPlaced; sign += 2) {
@@ -255,37 +342,28 @@ class MatrixGenerator {
               }
               if (!shiftedAndPlaced) {
                 failCount++;
-                // si ya fallamos 5 veces para este parent, salimos de los 3 candidatos restantes
                 if (failCount >= 5) break;
               }
             }
-          } // end attempts
-
-        } // end for k (3 candidates per parent)
-      } // end for each parent
-
-      // preparar la siguiente iteración: nextHorizontal alterna cada nivel
-      nextHorizontal = !nextHorizontal;
-
-      // terminar cuando no se añadieron nuevas ecuaciones en esta pasada
-      // (frontier ya fue rellenada en commitEquation; si quedó vacía, no hay más niveles)
-      if (frontier.isEmpty) break;
-    } // end while frontier
-
-    // Paso 4 (banco): por cada ecuación colocada, extraer aleatoriamente 1 o 2 operandos (A/B)
-    // y pasarlos al banco. Nos aseguramos de dejar al menos 1 operando visible por ecuación.
-    for (final eq in placedEquations) {
-      // posiciones de operandos en la ecuación: indices 0 (A) y 2 (B).
-      final List<Coord> operandCoords = [];
-      if (eq.horizontal) {
-        operandCoords.add(Coord(eq.x + 0, eq.y)); // A
-        operandCoords.add(Coord(eq.x + 2, eq.y)); // B
-      } else {
-        operandCoords.add(Coord(eq.x, eq.y + 0)); // A
-        operandCoords.add(Coord(eq.x, eq.y + 2)); // B
+          }
+        }
       }
 
-      // contar operandos actualmente visibles (números no nulos)
+      nextHorizontal = !nextHorizontal;
+      if (frontier.isEmpty) break;
+    }
+
+    // Relleno del banco (igual que antes)
+    for (final eq in placedEquations) {
+      final List<Coord> operandCoords = [];
+      if (eq.horizontal) {
+        operandCoords.add(Coord(eq.x + 0, eq.y));
+        operandCoords.add(Coord(eq.x + 2, eq.y));
+      } else {
+        operandCoords.add(Coord(eq.x, eq.y + 0));
+        operandCoords.add(Coord(eq.x, eq.y + 2));
+      }
+
       List<int> visibleIdx = [];
       for (int idx = 0; idx < operandCoords.length; idx++) {
         final c = operandCoords[idx];
@@ -297,14 +375,12 @@ class MatrixGenerator {
         }
       }
 
-      if (visibleIdx.length <= 1) continue; // no podemos quitar más (ya sólo hay 1 o 0 disponibles)
+      if (visibleIdx.length <= 1) continue;
 
-      // decidir cuántos operandos quitar: 1 o 2, pero no dejar 0 visibles
-      int toRemove = 1 + random.nextInt(2); // 1 o 2
+      int toRemove = 1 + random.nextInt(2);
       if (toRemove >= visibleIdx.length) {
-        toRemove = visibleIdx.length - 1; // aseguremos al menos 1 visible
+        toRemove = visibleIdx.length - 1;
       }
-      // seleccionar índices aleatorios de visibleIdx a remover
       visibleIdx.shuffle(random);
       final List<int> removeIdxs = visibleIdx.sublist(0, toRemove);
 
@@ -314,15 +390,14 @@ class MatrixGenerator {
         final cell = puzzle.grid[coord.r][coord.c];
         if (cell.type == CellType.number && cell.number != null && !cell.fixed) {
           final int val = cell.number;
-          cell.number = null; // quitar del tablero
-          // añadir al banco
+          cell.number = null;
           puzzle.bankPut(val);
         }
       }
     }
 
-    // FIN paso 4: devolvemos el puzzle generado (con ecuaciones colocadas y banco rellenado)
     return puzzle;
+    
     
     
   }
