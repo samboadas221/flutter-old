@@ -10,7 +10,7 @@ class Coord {
   Coord(this.r, this.c);
 
   @override
-  bool op ==(other) => other is Coord && other.r == r && other.c == c;
+  bool operator ==(other) => other is Coord && other.r == r && other.c == c;
 
   @override
   int get hashCode => r.hashCode ^ c.hashCode;
