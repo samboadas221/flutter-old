@@ -155,277 +155,83 @@ class MatrixGenerator {
     placeEquation(puzzle, firstEquation);
     
     // PASO 4:
-    // Asegurar que toda ecuación nueva INTERSECTA realmente a la existente.
-    // No se permiten "shifts" que rompan la intersección (esto causaba
-    // ecuaciones separadas). También se impone 1 casilla de separación
-    // para celdas que NO forman parte de la misma ecuación.
-    // ------------------------------------------------------------
-
-    // devuelve coords ocupadas por eq como lista de [r,c]
-    List<List<int>> _coordsFor(Equation eq) {
-      final List<List<int>> out = [];
-      if (eq.horizontal) {
-        for (int i = 0; i < 5; i++) out.add([eq.x + i, eq.y]);
-      } else {
-        for (int i = 0; i < 5; i++) out.add([eq.x, eq.y + i]);
+    // 4.1) Por cada ecuación se crea un nivel/stack
+    //      con 3 ecuaciones más que usarán los
+    //      3 valores de esa primers ecuación
+    //      Esta paso es exponencial. Si hay 1
+    //      ecuación van a intentar crearse 3 ecuaciones
+    //      más, si hay 3 van a intentar crearse 9 más, etc
+    
+    // 4.2) Luego de crear esas ecuaciones van a 
+    //      generamos sus coordenadas basados
+    //      en la intersección con el padre.
+    
+    // 4.3) verificamos si hay colisiones
+    
+    // 4.4) Si no hay colisiones colocamos
+    //      la ecuación, y la añadimos a la
+    //      siguiente lista para generar más
+    //      ecuaciones
+    
+    List<Equation> nextGeneration = [firstEquation];
+    List<equation> generatedChilds = [];
+    List<Equation> previousGeneration = [];
+    List<Equation> placedEquations = [];
+    bool generatedLevel = false;
+    
+    while(!generatedLevel){
+      
+      // Limpiamos las ecuaciones generadas
+      // en la generación previa
+      generatedChilds.clear();
+      placedEquations.clear();
+      
+      // Generar un stack de ecuaciones,
+      // para luego intentar poner esas
+      // ecuaciones hijas en el tablero
+      // e intentar intersectarlas con
+      // sus ecuaciones padre
+      for(Equation parent in nextGeneration){
+        List childA = generateEquationWithRequired(maxVal, parent.data[0]);
+        List childB = generateEquationWithRequired(maxVal, parent.data[2]);
+        List childC = generateEquationWithRequired(maxVal, parent.data[3]);
+        
+        Equation equationA = Equation(!parent.horizontal, -1, -1, childA);
+        Equation equationB = Equation(!parent.horizontal, -1, -1, childB);
+        Equation equationC = Equation(!parent.horizontal, -1, -1, childC);
+        
+        // Generamos las coordenadas correctas
+        // basado en la intersección con el padre
+        generateEquationCoords(parent, equationA);
+        generateEquationCoords(parent, equationA);
+        generateEquationCoords(parent, equationA);
+        
+        generatedChilds.add(equationA);
+        generatedChilds.add(equationB);
+        generatedChilds.add(equationC);
       }
-      return out;
+      
+      // Las ecuaciones generadas ahora hay
+      // que verificar sus colisiones y
+      // colocarlas en el tablero
+      for(Equation parent in nextGeneration){
+        
+      }
+      
+      // Si no hay ecuaciones para trabajar
+      // quiere decir que no hay más espacio
+      // para colocar más ecuaciones
+      if(nextGeneration.length <= 0){
+        generatedLevel = true;
+      }
+      
     }
-
-    bool _coordsContains(List<List<int>> coords, int r, int c) {
-      for (final cc in coords) if (cc[0] == r && cc[1] == c) return true;
-      return false;
-    }
-
-    // canPlace: además de compatibilidad en las mismas casillas,
-    // impone que NINGUNA celda objetivo tenga vecinos ocupados
-    // (4-direcciones) que no formen parte de la misma ecuación.
-    bool canPlaceEquationAt(MatrixPuzzle p, Equation eq) {
-      final desiredCells = eq.toCells();
-      final coords = _coordsFor(eq);
-
-      for (int i = 0; i < coords.length; i++) {
-        final int cx = coords[i][0];
-        final int cy = coords[i][1];
-
-        // debe caber
-        if (!p.inBounds(cx, cy)) return false;
-
-        final Cell existing = p.grid[cx][cy];
-        final Cell desired = desiredCells[i];
-
-        // si hay algo en la casilla: han de ser compatibles
-        if (existing.type != CellType.empty) {
-          if (existing.type != desired.type) return false;
-          if ((desired.type == CellType.number || desired.type == CellType.result) &&
-              existing.number != null && desired.number != null &&
-              existing.number != desired.number) return false;
-          if (desired.type == CellType.op &&
-              existing.op != null && desired.op != null &&
-              existing.op != desired.op) return false;
-        }
-
-        // vecinos 4-dir: si alguno está ocupado y NO pertenece a coords -> rechazo
-        final List<List<int>> neigh = [
-          [cx - 1, cy],
-          [cx + 1, cy],
-          [cx, cy - 1],
-          [cx, cy + 1],
-        ];
-
-        for (final n in neigh) {
-          final nr = n[0];
-          final nc = n[1];
-          if (!p.inBounds(nr, nc)) continue;
-
-          // si el vecino sería una casilla de esta misma ecuación, ignorarlo
-          if (_coordsContains(coords, nr, nc)) continue;
-
-          if (p.grid[nr][nc].type != CellType.empty) {
-            return false; // vecino ocupado por otra ecuación -> demasiado cerca
-          }
-        }
-      }
-
-      return true;
-    }
-
-    // coloca la ecuación sin sobrescribir celdas existentes (preserva intersecciones reales)
-    void placeEquationRespecting(MatrixPuzzle puzzle, Equation equation) {
-      final List<Cell> cells_equation = equation.toCells();
-      final coords = _coordsFor(equation);
-      for (int i = 0; i < coords.length; i++) {
-        final int cx = coords[i][0];
-        final int cy = coords[i][1];
-        if (!puzzle.inBounds(cx, cy)) continue;
-        final existing = puzzle.grid[cx][cy];
-        if (existing.type == CellType.empty) {
-          puzzle.grid[cx][cy] = cells_equation[i];
-        } else {
-          // ya existe: asumimos compatibilidad (canPlaceEquationAt la comprobó)
-          // no sobrescribimos para mantener la referencia compartida en intersecciones
-        }
-      }
-    }
-
-    void commitEquation(MatrixPuzzle p, Equation eq, List<Equation> placedEquations, List<Equation> frontier) {
-      placeEquationRespecting(p, eq);
-      placedEquations.add(eq);
-      frontier.add(eq);
-    }
-
-    // flujo principal: solo intentos que preserven la intersección exacta
-    List<Equation> placedEquations = [firstEquation];
-    List<Equation> frontier = [firstEquation];
-    bool nextHorizontal = !firstHorizontal;
-    int globalIterations = 0;
-    const int MAX_GLOBAL_ITERS = 200;
-
-    while (frontier.isNotEmpty && globalIterations < MAX_GLOBAL_ITERS) {
-      globalIterations++;
-      final List<Equation> currentLevel = List<Equation>.from(frontier);
-      frontier.clear();
-      final List<List> candidates = generateLevel(maxVal, currentLevel);
-
-      int candIndex = 0;
-      for (int i = 0; i < currentLevel.length; i++) {
-        final Equation parent = currentLevel[i];
-        int failCount = 0;
-
-        // por cada parent intentamos sus 3 candidatos; **NUNCA** hacemos shifts que rompan la intersección
-        for (int k = 0; k < 3; k++) {
-          if (candIndex >= candidates.length) break;
-          final List cand = candidates[candIndex++];
-          if (cand == null || cand.isEmpty) continue;
-          if (cand.length == 1 && cand[0] == -1) continue;
-          int requiredValue;
-          if (k == 0) requiredValue = parent.data[0];
-          else if (k == 1) requiredValue = parent.data[2];
-          else requiredValue = parent.data[3];
-
-          final valPos = parent.getValuePosition(requiredValue);
-          if (valPos is int) continue; // no encontró la posición (salta)
-          final int vx = (valPos as List)[0];
-          final int vy = (valPos as List)[1];
-
-          final bool candidateHorizontal = nextHorizontal;
-          final List candData = cand;
-
-          int slotOffset = -1;
-          if (candData[0] == requiredValue) slotOffset = 0;
-          else if (candData[2] == requiredValue) slotOffset = 2;
-          else if (candData[3] == requiredValue) slotOffset = 4;
-          else continue;
-
-          int ex, ey;
-          if (candidateHorizontal) {
-            ex = vx - slotOffset;
-            ey = vy;
-          } else {
-            ex = vx;
-            ey = vy - slotOffset;
-          }
-
-          final Equation eqCand = Equation(candidateHorizontal, ex, ey, candData);
-
-          // Intentos: solo colocar EXACTAMENTE en (ex,ey) — si no cabe, lo descartamos.
-          if (canPlaceEquationAt(puzzle, eqCand)) {
-            commitEquation(puzzle, eqCand, placedEquations, frontier);
-          } else {
-            failCount++;
-            if (failCount >= 5) break;
-            // NO substituir por desplazamientos que rompan la intersección.
-            // Simplemente se intentará con el siguiente candidato/parent.
-          }
-        } // end for k
-      } // end for parents
-
-      nextHorizontal = !nextHorizontal;
-      // si frontier quedó vacío, no hay más ecuaciones que se puedan generar intersectando la red actual
-      if (frontier.isEmpty) break;
-    } // end while
-
-    // Relleno del banco (igual que antes)
-    for (final eq in placedEquations) {
-      final List<Coord> operandCoords = [];
-      if (eq.horizontal) {
-        operandCoords.add(Coord(eq.x + 0, eq.y));
-        operandCoords.add(Coord(eq.x + 2, eq.y));
-      } else {
-        operandCoords.add(Coord(eq.x, eq.y + 0));
-        operandCoords.add(Coord(eq.x, eq.y + 2));
-      }
-
-      List<int> visibleIdx = [];
-      for (int idx = 0; idx < operandCoords.length; idx++) {
-        final c = operandCoords[idx];
-        if (puzzle.inBounds(c.r, c.c)) {
-          final cell = puzzle.grid[c.r][c.c];
-          if ((cell.type == CellType.number) && (cell.number != null) && !cell.fixed) {
-            visibleIdx.add(idx);
-          }
-        }
-      }
-
-      if (visibleIdx.length <= 1) continue;
-
-      int toRemove = 1 + random.nextInt(2);
-      if (toRemove >= visibleIdx.length) {
-        toRemove = visibleIdx.length - 1;
-      }
-      visibleIdx.shuffle(random);
-      final List<int> removeIdxs = visibleIdx.sublist(0, toRemove);
-
-      for (final ridx in removeIdxs) {
-        final coord = operandCoords[ridx];
-        if (!puzzle.inBounds(coord.r, coord.c)) continue;
-        final cell = puzzle.grid[coord.r][coord.c];
-        if (cell.type == CellType.number && cell.number != null && !cell.fixed) {
-          final int val = cell.number;
-          cell.number = null;
-          puzzle.bankPut(val);
-        }
-      }
-    }
-
+    
+    
     return puzzle;
   }
   
   // HELPER FUNCTIONS:
-  
-  // helper: comprueba si una ecuación puede colocarse (compatibilidad/collision)
-  static bool canPlaceEquationAt(MatrixPuzzle p, Equation eq) {
-    if (eq.horizontal) {
-      for (int i = 0; i < 5; i++) {
-        final int cx = eq.x + i;
-        final int cy = eq.y;
-        if (!p.inBounds(cx, cy)) return false;
-        final Cell existing = p.grid[cx][cy];
-        final Cell desired = eq.toCells()[i];
-
-        // empty is ok
-        if (existing.type == CellType.empty) continue;
-
-        // if types differ -> collision
-        if (existing.type != desired.type) return false;
-
-        // same type: check value compatibility
-        if (desired.type == CellType.number || desired.type == CellType.result) {
-          // if existing has a number, it must match desired number (or existing.number==null allowed)
-          if (existing.number != null && desired.number != null && existing.number != desired.number) return false;
-          // if existing has a fixed number different -> collision (already checked by previous line)
-        } else if (desired.type == CellType.op) {
-          if (existing.op != null && desired.op != null && existing.op != desired.op) return false;
-        }
-        // equals cell has no extra constraints beyond type
-      }
-    } else {
-      for (int i = 0; i < 5; i++) {
-        final int cx = eq.x;
-        final int cy = eq.y + i;
-        if (!p.inBounds(cx, cy)) return false;
-        final Cell existing = p.grid[cx][cy];
-        final Cell desired = eq.toCells()[i];
-
-        if (existing.type == CellType.empty) continue;
-        if (existing.type != desired.type) return false;
-
-        if (desired.type == CellType.number || desired.type == CellType.result) {
-          if (existing.number != null && desired.number != null && existing.number != desired.number) return false;
-        } else if (desired.type == CellType.op) {
-          if (existing.op != null && desired.op != null && existing.op != desired.op) return false;
-        }
-      }
-    }
-    return true;
-  }
-  
-  // helper: coloca la ecuación y registra que fue añadida
-  static void commitEquation(MatrixPuzzle p, Equation eq, List<Equation> placedEquations, List<Equation> frontier) {
-    placeEquation(p, eq);
-    placedEquations.add(eq);
-    frontier.add(eq);
-  }
   
   static List generateEquation(int maxVal) {
     final List<String> ops = ['+', '-', '*', '/'];
@@ -548,29 +354,178 @@ class MatrixGenerator {
     }
   }
   
-  static List<List> generateLevel(int maxVal, List<Equation> requests){
-    List<List> equations = [];
-    for(int i = 0; i < requests.length; i++){
-      equations.add(
-        generateEquationWithRequired(
-          maxVal, requests[i].data[0]
-        )
-      );
-      equations.add(
-        generateEquationWithRequired(
-          maxVal, requests[i].data[2]
-        )
-      );
-      equations.add(
-        generateEquationWithRequired(
-          maxVal, requests[i].data[3]
-        )
-      );
+  static void generateEquationCoords(Equation parent, Equation child){
+    int intersectionIndex = getChildIndexIntersection(parent, child, 0);
+    if(intersectionIndex != -1){
+      generatePositionFromIntersection(parent, child, 0, intersectionIndex);
+      return;
     }
-    return equations;
+    
+    int intersectionIndex = getChildIndexIntersection(parent, child, 2);
+    if(intersectionIndex != -1){
+      generatePositionFromIntersection(parent, child, 2, intersectionIndex);
+      return;
+    }
+    
+    int intersectionIndex = getChildIndexIntersection(parent, child, 3);
+    if(intersectionIndex != -1){
+      generatePositionFromIntersection(parent, child, 3, intersectionIndex);
+      return;
+    }
   }
   
+  static int getChildIndexIntersection(Equation parent, Equation child, int index){
+    if(parent.data[index] == child.data[0]){return 0;}
+    if(parent.data[index] == child.data[2]){return 2;}
+    if(parent.data[index] == child.data[3]){return 3;}
+    return -1;
+  }
+  
+  static void generatePositionFromIntersection(Equation parent, Equation child, int parentIndex, int childIndex){
+    if(parentIndex == 0 && childIndex == 0){
+      child.x = parent.x;
+      child.y = parent.y;
+      return;
+    }
+    if(parent.horizontal){
+      switch(parentIndex){
+        case 0: switch(childIndex){
+          case 2:
+            child.x = parent.x;
+            child.y = parent.y-2;
+            return;
+          case 3:
+            child.x = parent.x;
+            child.y = parent.y-4;
+            return;
+        }
+        
+        case 2: switch(childIndex){
+          case 0:
+            child.x = parent.x+2;
+            child.y = parent.y;
+            return;
+          
+          case 2:
+            child.x = parent.x+2;
+            child.y = parent.y-2;
+            return;
+            
+          case 3:
+            child.x = parent.x+2;
+            child.y = parent.y-4;
+            return;
+        }
+        
+        case 3: switch(childIndex){
+          case 0:
+            child.x = parent.x+4;
+            child.y = parent.y;
+            return;
+          
+          case 2:
+            child.x = parent.x+4;
+            child.y = parent.y-2;
+            return;
+          
+          case 3:
+            child.x = parent.x+4;
+            child.y = parent.y-4;
+            return;
+        }
+      }
+    } else {
+      switch(parentIndex){
+        case 0: switch(childIndex){
+          case 2:
+            child.x = parent.x-2;
+            child.y = parent.y;
+            return;
+          case 3:
+            child.x = parent.x-4;
+            child.y = parent.y;
+            return;
+        }
+        
+        case 2: switch(childIndex){
+          case 0:
+            child.x = parent.x;
+            child.y = parent.y+2;
+            return;
+          
+          case 2:
+            child.x = parent.x+2;
+            child.y = parent.y+2;
+            return;
+            
+          case 3:
+            child.x = parent.x+4;
+            child.y = parent.y+2;
+            return;
+        }
+        
+        case 3: switch(childIndex){
+          case 0:
+            child.x = parent.x;
+            child.y = parent.y+4;
+            return;
+          
+          case 2:
+            child.x = parent.x-2;
+            child.y = parent.y+4;
+            return;
+          
+          case 3:
+            child.x = parent.x-4;
+            child.y = parent.y+4;
+            return;
+        }
+      }
+    }
+    
+  }
 
+  static bool collide(Equation child, Equation parent, MatrixPuzzle board){
+    
+    if(child.horizontal){
+      for(int y=-1; y<2; y++){
+        for(int x=-1; x<6; x++){
+          int posX = child.x + x;
+          int posY = child.y + y;
+          if(board.inBounds(posX, posY)){
+            if(
+              board.grid[posX][posY] != Cell.empty() &&
+              posX != (parent.x + x) && posY != (parent.y + y)) {
+                return true;
+            }
+          } else {
+            return false;
+          }
+        }
+      }
+      
+    // Now lets do the same but for Vertical equations
+    } else {
+      for(int y=-1; y<6; y++){
+        for(int x=-1; x<2; x++){
+          int posX = child.x + x;
+          int posY = child.y + y;
+          if(board.inBounds(posX, posY)){
+            if(
+              board.grid[posX][posY] != Cell.empty() &&
+              posX != (parent.x + x) && posY != (parent.y + y)) {
+                return true;
+            }
+          } else {
+            return false;
+          }
+        }
+      }
+    }
+  }
+  
+  
+  
 }
 
 class Equation {
@@ -603,4 +558,5 @@ class Equation {
     cells.add(Cell.result  (data[3] as int));
     return cells;
   }
+  
 }
