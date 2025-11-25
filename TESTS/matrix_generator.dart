@@ -1,4 +1,5 @@
 
+
 import 'dart:math';
 import 'matrix_puzzle.dart';
 import 'cell.dart';
@@ -215,32 +216,8 @@ class MatrixGenerator {
       // que verificar sus colisiones y
       // colocarlas en el tablero
       for(Equation parent in nextGeneration){
-        int offset = nextGeneration.indexOf(parent) * 3;
-        if(!collide(generatedChilds[0 + offset], parent, puzzle)){
-          placeEquation(puzzle, generatedChilds[0 + offset]);
-          placedEquations.add(generatedChilds[0 + offset]);
-        }
-        if(!collide(generatedChilds[1 + offset], parent, puzzle)){
-          placeEquation(puzzle, generatedChilds[1 + offset]);
-          placedEquations.add(generatedChilds[1 + offset]);
-        }
-        if(!collide(generatedChilds[2 + offset], parent, puzzle)){
-          placeEquation(puzzle, generatedChilds[2 + offset]);
-          placedEquations.add(generatedChilds[2 + offset]);
-        }
+        
       }
-      
-      // Ahora que hemos puesto todas las
-      // ecuaciones sin colision en el tablero
-      // debemos limpiar la lista de padres
-      // actual, para que los padres de la
-      // nueva generación sean las ecuaciones
-      // que acabamos de poner
-      nextGeneration.clear();
-      for(Equation equation in placedEquations){
-        nextGeneration.add(equation);
-      }
-      placedEquations.clear();
       
       // Si no hay ecuaciones para trabajar
       // quiere decir que no hay más espacio
@@ -248,6 +225,7 @@ class MatrixGenerator {
       if(nextGeneration.length <= 0){
         generatedLevel = true;
       }
+      
     }
     
     
