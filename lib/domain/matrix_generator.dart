@@ -173,6 +173,8 @@ class MatrixGenerator {
     //      siguiente lista para generar más
     //      ecuaciones
     
+    /*
+    
     List<Equation> nextGeneration = [firstEquation];
     List<Equation> generatedChilds = [];
     List<Equation> previousGeneration = [];
@@ -253,6 +255,8 @@ class MatrixGenerator {
     // -> En esta parte al parecer debe
     // ir la lógica de quitar celdas y
     // añadirlas al banco
+    
+    */
     
     // ------------------ BLOQUE: OCULTAR NÚMEROS Y METER EN EL BANCO ------------------
     // Inserta esto justo antes de "return puzzle;"
