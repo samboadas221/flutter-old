@@ -173,21 +173,14 @@ class MatrixGenerator {
     //      siguiente lista para generar más
     //      ecuaciones
     
-    /*
+    
     
     List<Equation> nextGeneration = [firstEquation];
     List<Equation> generatedChilds = [];
-    List<Equation> previousGeneration = [];
     List<Equation> placedEquations = [];
     bool generatedLevel = false;
     
     while(!generatedLevel){
-      
-      // Limpiamos las ecuaciones generadas
-      // en la generación previa
-      generatedChilds.clear();
-      placedEquations.clear();
-      
       // Generar un stack de ecuaciones,
       // para luego intentar poner esas
       // ecuaciones hijas en el tablero
@@ -205,8 +198,8 @@ class MatrixGenerator {
         // Generamos las coordenadas correctas
         // basado en la intersección con el padre
         generateEquationCoords(parent, equationA);
-        generateEquationCoords(parent, equationA);
-        generateEquationCoords(parent, equationA);
+        generateEquationCoords(parent, equationB);
+        generateEquationCoords(parent, equationC);
         
         generatedChilds.add(equationA);
         generatedChilds.add(equationB);
@@ -243,6 +236,7 @@ class MatrixGenerator {
         nextGeneration.add(equation);
       }
       placedEquations.clear();
+      generatedChilds.clear();
       
       // Si no hay ecuaciones para trabajar
       // quiere decir que no hay más espacio
@@ -256,7 +250,7 @@ class MatrixGenerator {
     // ir la lógica de quitar celdas y
     // añadirlas al banco
     
-    */
+    
     
     // ------------------ BLOQUE: OCULTAR NÚMEROS Y METER EN EL BANCO ------------------
     // Inserta esto justo antes de "return puzzle;"
