@@ -174,7 +174,7 @@ class MatrixGenerator {
     //      ecuaciones
     
     List<Equation> nextGeneration = [firstEquation];
-    List<equation> generatedChilds = [];
+    List<Equation> generatedChilds = [];
     List<Equation> previousGeneration = [];
     List<Equation> placedEquations = [];
     bool generatedLevel = false;
@@ -361,13 +361,13 @@ class MatrixGenerator {
       return;
     }
     
-    int intersectionIndex = getChildIndexIntersection(parent, child, 2);
+    intersectionIndex = getChildIndexIntersection(parent, child, 2);
     if(intersectionIndex != -1){
       generatePositionFromIntersection(parent, child, 2, intersectionIndex);
       return;
     }
     
-    int intersectionIndex = getChildIndexIntersection(parent, child, 3);
+    intersectionIndex = getChildIndexIntersection(parent, child, 3);
     if(intersectionIndex != -1){
       generatePositionFromIntersection(parent, child, 3, intersectionIndex);
       return;
@@ -398,7 +398,9 @@ class MatrixGenerator {
             child.x = parent.x;
             child.y = parent.y-4;
             return;
+          default: break;
         }
+        break;
         
         case 2: switch(childIndex){
           case 0:
@@ -415,7 +417,10 @@ class MatrixGenerator {
             child.x = parent.x+2;
             child.y = parent.y-4;
             return;
+            
+          default: break;
         }
+        break;
         
         case 3: switch(childIndex){
           case 0:
@@ -432,7 +437,10 @@ class MatrixGenerator {
             child.x = parent.x+4;
             child.y = parent.y-4;
             return;
+          
+          default: break;
         }
+        break;
       }
     } else {
       switch(parentIndex){
@@ -441,11 +449,15 @@ class MatrixGenerator {
             child.x = parent.x-2;
             child.y = parent.y;
             return;
+            
           case 3:
             child.x = parent.x-4;
             child.y = parent.y;
             return;
+            
+          default: break;
         }
+        break;
         
         case 2: switch(childIndex){
           case 0:
@@ -462,7 +474,10 @@ class MatrixGenerator {
             child.x = parent.x+4;
             child.y = parent.y+2;
             return;
+          
+          default: break;
         }
+        break;
         
         case 3: switch(childIndex){
           case 0:
@@ -479,7 +494,10 @@ class MatrixGenerator {
             child.x = parent.x-4;
             child.y = parent.y+4;
             return;
+          
+          default: break;
         }
+        break;
       }
     }
     
