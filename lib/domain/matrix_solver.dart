@@ -1,6 +1,8 @@
 
 // Compatible con Flutter 1.22 (no null-safety)
 
+/*
+
 import 'matrix_puzzle.dart';
 import 'cell.dart';
 
@@ -102,4 +104,10 @@ class MatrixSolver {
 
     return calc == C;
   }
+}
+
+*/
+
+class MatrixSolver{
+  
 }

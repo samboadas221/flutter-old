@@ -25,8 +25,8 @@ class CellType {
 
 class Cell {
   CellType type;
-  int number;        // solo para number y result
-  String op;   // solo para operator (+ - * /)
+  int? number;        // solo para number y result
+  String? op;   // solo para operator (+ - * /)
   bool fixed = false;
 
   Cell.empty() : type = CellType.empty;
@@ -65,6 +65,33 @@ class Cell {
     c.op = op;
     c.fixed = fixed;
     return c;
+  }
+  
+  String toString(){
+    switch(type){
+      case CellType.empty:
+        return '•';
+        break;
+      
+      case CellType.number:
+        return '$number';
+        break;
+      
+      case CellType.op:
+        String nonNullOp = op ?? '•';
+        return nonNullOp;
+        break;
+      
+      case CellType.equals:
+        return '=';
+        break;
+      
+      case CellType.result:
+        return '$number';
+        break;
+    }
+    
+    return '';
   }
 
 }

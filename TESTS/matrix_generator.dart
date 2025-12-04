@@ -1,9 +1,4 @@
 
-
-import 'dart:math';
-import 'matrix_puzzle.dart';
-import 'cell.dart';
-
 /*
 DESCRIPCIÓN DEL ALGORIRMO:
 
@@ -98,6 +93,10 @@ ocultarlo, dejando a la ecuación con sus
 tres números ocultos)
 */
 
+import 'dart:math';
+import 'matrix_puzzle.dart';
+import 'cell.dart';
+
 class MatrixGenerator {
   
   static final Random random = Random();
@@ -108,20 +107,20 @@ class MatrixGenerator {
     // Paso 0: Definir la configuración
     int minSize, maxSize, maxVal;
     if (difficulty == 'easy') {
-      minSize = 10;
-      maxSize = 12;
+      minSize = 15;
+      maxSize = 18;
       maxVal = 30;
     } else if (difficulty == 'medium') {
-      minSize = 13;
-      maxSize = 15;
+      minSize = 19;
+      maxSize = 23;
       maxVal = 60;
     } else {
-      minSize = 16;
-      maxSize = 20;
+      minSize = 24;
+      maxSize = 30;
       maxVal = 99;
     }
     
-    // Paso 1: Generar el tablero
+    // Paso 1: Generar el Tablero
     final int size = minSize + random.nextInt(maxSize - minSize + 1);
     final puzzle = MatrixPuzzle(size, size, difficulty: difficulty);
     
@@ -139,11 +138,11 @@ class MatrixGenerator {
     int posX;
     int posY;
     if(firstHorizontal){
-      posX = random.nextInt(size - 5);
-      posY = random.nextInt(size);
+      posX = 2 + random.nextInt(size - 7);
+      posY = 3 + random.nextInt(size - 6);
     } else {
-      posX = random.nextInt(size);
-      posY = random.nextInt(size - 5);
+      posX = 3 + random.nextInt(size - 6);
+      posY = 2 + random.nextInt(size - 7);
     }
     
     Equation firstEquation = Equation(
@@ -174,24 +173,27 @@ class MatrixGenerator {
     //      siguiente lista para generar más
     //      ecuaciones
     
+    
+    
     List<Equation> nextGeneration = [firstEquation];
     List<Equation> generatedChilds = [];
-    List<Equation> previousGeneration = [];
     List<Equation> placedEquations = [];
     bool generatedLevel = false;
     
+    int generationCount = 1;
+    
+    int maxRetries = 1500;
+    int actualRetries = 0;
+    
     while(!generatedLevel){
-      
-      // Limpiamos las ecuaciones generadas
-      // en la generación previa
-      generatedChilds.clear();
-      placedEquations.clear();
-      
       // Generar un stack de ecuaciones,
       // para luego intentar poner esas
       // ecuaciones hijas en el tablero
       // e intentar intersectarlas con
       // sus ecuaciones padre
+      print('01) Generando ecuaciones hijas. Generación: $generationCount');
+      print(' ');
+      generationCount++;
       for(Equation parent in nextGeneration){
         List childA = generateEquationWithRequired(maxVal, parent.data[0]);
         List childB = generateEquationWithRequired(maxVal, parent.data[2]);
@@ -204,8 +206,8 @@ class MatrixGenerator {
         // Generamos las coordenadas correctas
         // basado en la intersección con el padre
         generateEquationCoords(parent, equationA);
-        generateEquationCoords(parent, equationA);
-        generateEquationCoords(parent, equationA);
+        generateEquationCoords(parent, equationB);
+        generateEquationCoords(parent, equationC);
         
         generatedChilds.add(equationA);
         generatedChilds.add(equationB);
@@ -215,19 +217,246 @@ class MatrixGenerator {
       // Las ecuaciones generadas ahora hay
       // que verificar sus colisiones y
       // colocarlas en el tablero
+      print('02) Verificar colisiones de ecuaciones hijas');
+      print(' ');
       for(Equation parent in nextGeneration){
+        int offset = nextGeneration.indexOf(parent) * 3;
+        if(!collide(generatedChilds[0 + offset], parent, puzzle)){
+          placeEquation(puzzle, generatedChilds[0 + offset]);
+          placedEquations.add(generatedChilds[0 + offset]);
+        } else {
+          int eqPosX = generatedChilds[0 + offset].x;
+          int eqPosY = generatedChilds[0 + offset].y;
+          print(' La ecuación con coordenadas: $eqPosX - $eqPosY');
+          if(generatedChilds[0 + offset].horizontal){
+            print(' de tipo HORIZONTAL');
+          } else {
+            print(' de tipo VERTICAL');
+          }
+          print(' Tiene una colisión no válida');
+          print(' ');
+        }
+        if(!collide(generatedChilds[1 + offset], parent, puzzle)){
+          placeEquation(puzzle, generatedChilds[1 + offset]);
+          placedEquations.add(generatedChilds[1 + offset]);
+        }else {
+          int eqPosX = generatedChilds[1 + offset].x;
+          int eqPosY = generatedChilds[1 + offset].y;
+          print(' La ecuación con coordenadas: $eqPosX - $eqPosY');
+          if(generatedChilds[1 + offset].horizontal){
+            print(' de tipo HORIZONTAL');
+          } else {
+            print(' de tipo VERTICAL');
+          }
+          print(' Tiene una colisión no válida');
+          print(' ');
+        }
+        if(!collide(generatedChilds[2 + offset], parent, puzzle)){
+          placeEquation(puzzle, generatedChilds[2 + offset]);
+          placedEquations.add(generatedChilds[2 + offset]);
+        }else {
+          int eqPosX = generatedChilds[2 + offset].x;
+          int eqPosY = generatedChilds[2 + offset].y;
+          print(' La ecuación con coordenadas: $eqPosX - $eqPosY');
+          if(generatedChilds[2 + offset].horizontal){
+            print(' de tipo HORIZONTAL');
+          } else {
+            print(' de tipo VERTICAL');
+          }
+          print(' Tiene una colisión no válida');
+          print(' ');
+        }
+      }
+      
+      print(' 05-T) Colisiones verificadas y ecuaciones ingresadas en el tablero');
+      print(' ');
+      
+      int addedEq = placedEquations.length;
+      print(' Ecuaciones añadidas al tablero: $addedEq');
+      
+      // Ahora que hemos puesto todas las
+      // ecuaciones sin colision en el tablero
+      // debemos limpiar la lista de padres
+      // actual, para que los padres de la
+      // nueva generación sean las ecuaciones
+      // que acabamos de poner
+      
+      if(placedEquations.length <= 0){
+        // This means we put nothing on this pass
+        // So we're gonna try again with the same parent
         
+        generatedChilds.clear();
+        placedEquations.clear();
+        
+        if(actualRetries < maxRetries){
+          actualRetries ++;
+        } else {
+          // This means we depleted our retrys
+          // So we gotta end the loop
+          generatedLevel = true;
+        }
+      } else {
+        nextGeneration.clear();
+        for(Equation equation in placedEquations){
+          nextGeneration.add(equation);
+        }
+        placedEquations.clear();
+        generatedChilds.clear();
       }
-      
-      // Si no hay ecuaciones para trabajar
-      // quiere decir que no hay más espacio
-      // para colocar más ecuaciones
-      if(nextGeneration.length <= 0){
-        generatedLevel = true;
-      }
-      
     }
     
+    // ------------------ BLOQUE: OCULTAR NÚMEROS Y METER EN EL BANCO ------------------
+    // Inserta esto justo antes de "return puzzle;"
+    
+    // 1) Recopilar todas las ecuaciones presentes en el tablero
+    List<Equation> boardEquations = [];
+    
+    // scan horizontal
+    for (int r = 0; r < puzzle.width; r++) {
+      for (int c = 0; c <= puzzle.height - 5; c++) {
+        if (puzzle.grid[c][r].type == CellType.number &&
+            puzzle.grid[c+1][r].type == CellType.op &&
+            puzzle.grid[c+2][r].type == CellType.number &&
+            puzzle.grid[c+3][r].type == CellType.equals &&
+            puzzle.grid[c+4][r].type == CellType.result) {
+          final A = puzzle.grid[c][r].number;
+          final op = puzzle.grid[c+1][r].op;
+          final B = puzzle.grid[c+2][r].number;
+          final C = puzzle.grid[c+4][r].number;
+          // asegurar que no añadimos duplicados (por si hay solapes interpretables)
+          boardEquations.add(Equation(true, c, r, [A, op, B, C]));
+        }
+      }
+    }
+    // scan vertical
+    for (int c = 0; c < puzzle.height; c++) {
+      for (int r = 0; r <= puzzle.width - 5; r++) {
+        if (puzzle.grid[c][r].type == CellType.number &&
+            puzzle.grid[c][r+1].type == CellType.op &&
+            puzzle.grid[c][r+2].type == CellType.number &&
+            puzzle.grid[c][r+3].type == CellType.equals &&
+            puzzle.grid[c][r+4].type == CellType.result) {
+          final A = puzzle.grid[c][r].number;
+          final op = puzzle.grid[c][r+1].op;
+          final B = puzzle.grid[c][r+2].number;
+          final C = puzzle.grid[c][r+4].number;
+          boardEquations.add(Equation(false, c, r, [A, op, B, C]));
+        }
+      }
+    }
+    
+    // 2) Mapa coord -> lista de ecuaciones (índices)
+    Map<String, List<int>> coordToEquations = {}; // key "r,c" -> list of indices in boardEquations
+    String keyOf(int r, int c) => r.toString() + ',' + c.toString();
+    
+    List<List<Coord>> equationNumberCoords = []; // para cada ecuación, coords de A y B (no resultado)
+    for (int i = 0; i < boardEquations.length; i++) {
+      final eq = boardEquations[i];
+      final List<Coord> coords = [];
+      if (eq.horizontal) {
+        coords.add(Coord(eq.x + 0, eq.y)); // A
+        coords.add(Coord(eq.x + 2, eq.y)); // B
+      } else {
+        coords.add(Coord(eq.x, eq.y + 0)); // A
+        coords.add(Coord(eq.x, eq.y + 2)); // B
+      }
+      equationNumberCoords.add(coords);
+    
+      for (final coord in coords) {
+        final k = keyOf(coord.width, coord.height);
+        coordToEquations[k] ??= [];
+        coordToEquations[k]!.add(i);
+      }
+    }
+    
+    // 3) Para cada ecuación elegimos celdas candidatas a ocultar
+    final rng = MatrixGenerator.random;
+    
+    // definimos probabilidad/criterio de cuántos quitar: 1 o 2 (aleatorio)
+    for (int i = 0; i < boardEquations.length; i++) {
+      final eq = boardEquations[i];
+      final coords = equationNumberCoords[i];
+    
+      // comprobar cuántos operandos visibles tiene actualmente (A/B)
+      List<int> visibleIdx = [];
+      for (int idx = 0; idx < coords.length; idx++) {
+        final p = coords[idx];
+        if (puzzle.inBounds(p.width, p.height)) {
+          final cell = puzzle.grid[p.width][p.height];
+          if (cell.type == CellType.number && cell.number != null && !cell.fixed) {
+            visibleIdx.add(idx);
+          }
+        }
+      }
+      if (visibleIdx.isEmpty) continue; // nada que quitar
+    
+      int want = 1 + rng.nextInt(2); // 1 o 2
+      if (want >= visibleIdx.length) want = visibleIdx.length - 1; // dejar al menos 1 visible
+      if (want <= 0) continue;
+    
+      // preferir candidatos que NO sean intersecciones (i.e., coordToEquations[key].length == 1)
+      List<int> nonIntersecting = [];
+      List<int> intersecting = [];
+      for (final idx in visibleIdx) {
+        final p = coords[idx];
+        final k = keyOf(p.width, p.height);
+        final users = coordToEquations[k] ?? [];
+        if (users.length <= 1) nonIntersecting.add(idx);
+        else intersecting.add(idx);
+      }
+    
+      // construir lista de elección priorizada
+      final List<int> pickPool = [];
+      pickPool.addAll(nonIntersecting);
+      pickPool.addAll(intersecting);
+    
+      // shuffle and pick up to 'want' but checking safety before removing each
+      pickPool.shuffle(rng);
+      int removed = 0;
+      for (final idx in List<int>.from(pickPool)) {
+        if (removed >= want) break;
+        final coord = coords[idx];
+        if (!puzzle.inBounds(coord.width, coord.height)) continue;
+        Cell cell = puzzle.grid[coord.width][coord.height];
+        if (cell.type != CellType.number || cell.number == null) continue;
+    
+        // simulación de efecto: para cada ecuación que usa esta celda, comprobar que tras quitar
+        // no se queda sin operandos visibles
+        final users = coordToEquations[keyOf(coord.width, coord.height)] ?? [];
+        bool safe = true;
+        for (final eqIndex in users) {
+          // contar visibles si quitamos esta celda
+          int visibleAfter = 0;
+          final otherCoords = equationNumberCoords[eqIndex];
+          for (int kIdx = 0; kIdx < otherCoords.length; kIdx++) {
+            final oc = otherCoords[kIdx];
+            if (oc.width == coord.width && oc.height == coord.height) continue; // sería eliminado
+            if (!puzzle.inBounds(oc.width, oc.height)) continue;
+            final ocell = puzzle.grid[oc.width][oc.height];
+            if (ocell.type == CellType.number && ocell.number != null) visibleAfter++;
+          }
+          if (visibleAfter <= 0) {
+            safe = false;
+            break;
+          }
+        }
+    
+        if (!safe) continue;
+    
+        // realizar eliminación real
+        final int val = cell.number ?? -1;
+        cell = Cell.empty();
+        puzzle.bankPut(val);
+    
+        // actualizar estructuras: coordToEquations para esta celda ya no importa (celda vacía)
+        coordToEquations.remove(keyOf(coord.width, coord.height));
+        removed++;
+      }
+    
+      // si no conseguimos quitar 'want' por constraints, está bien: dejamos lo que se pudo quitar
+    }
+    
+    // FIN BLOQUE ocultado
     
     return puzzle;
   }
@@ -252,7 +481,7 @@ class MatrixGenerator {
       }
       if (C >= 1 && C <= maxVal) return [A, op, B, C];
     }
-    return null;
+    return [];
   }
   
   static List generateEquationWithRequired(int maxVal, int requiredValue) {
@@ -383,164 +612,91 @@ class MatrixGenerator {
   }
   
   static void generatePositionFromIntersection(Equation parent, Equation child, int parentIndex, int childIndex){
-    if(parentIndex == 0 && childIndex == 0){
-      child.x = parent.x;
-      child.y = parent.y;
-      return;
-    }
-    if(parent.horizontal){
-      switch(parentIndex){
-        case 0: switch(childIndex){
-          case 2:
-            child.x = parent.x;
-            child.y = parent.y-2;
-            return;
-          case 3:
-            child.x = parent.x;
-            child.y = parent.y-4;
-            return;
-          default: break;
-        }
-        break;
-        
-        case 2: switch(childIndex){
-          case 0:
-            child.x = parent.x+2;
-            child.y = parent.y;
-            return;
-          
-          case 2:
-            child.x = parent.x+2;
-            child.y = parent.y-2;
-            return;
-            
-          case 3:
-            child.x = parent.x+2;
-            child.y = parent.y-4;
-            return;
-            
-          default: break;
-        }
-        break;
-        
-        case 3: switch(childIndex){
-          case 0:
-            child.x = parent.x+4;
-            child.y = parent.y;
-            return;
-          
-          case 2:
-            child.x = parent.x+4;
-            child.y = parent.y-2;
-            return;
-          
-          case 3:
-            child.x = parent.x+4;
-            child.y = parent.y-4;
-            return;
-          
-          default: break;
-        }
-        break;
-      }
-    } else {
-      switch(parentIndex){
-        case 0: switch(childIndex){
-          case 2:
-            child.x = parent.x-2;
-            child.y = parent.y;
-            return;
-            
-          case 3:
-            child.x = parent.x-4;
-            child.y = parent.y;
-            return;
-            
-          default: break;
-        }
-        break;
-        
-        case 2: switch(childIndex){
-          case 0:
-            child.x = parent.x;
-            child.y = parent.y+2;
-            return;
-          
-          case 2:
-            child.x = parent.x+2;
-            child.y = parent.y+2;
-            return;
-            
-          case 3:
-            child.x = parent.x+4;
-            child.y = parent.y+2;
-            return;
-          
-          default: break;
-        }
-        break;
-        
-        case 3: switch(childIndex){
-          case 0:
-            child.x = parent.x;
-            child.y = parent.y+4;
-            return;
-          
-          case 2:
-            child.x = parent.x-2;
-            child.y = parent.y+4;
-            return;
-          
-          case 3:
-            child.x = parent.x-4;
-            child.y = parent.y+4;
-            return;
-          
-          default: break;
-        }
-        break;
-      }
-    }
+    int parentOffset = parentIndex;
+    if(parentOffset == 3) parentOffset = 4;
     
+    int childOffset = childIndex;
+    if(childOffset == 3) childOffset = 4;
+    
+    if(parent.horizontal){
+      child.x = parent.x + parentOffset;
+      child.y = parent.y - childOffset;
+    } else {
+      child.y = parent.y + parentOffset;
+      child.x = parent.x - childOffset;
+    }
   }
 
   static bool collide(Equation child, Equation parent, MatrixPuzzle board){
     
+    bool collision = false;
+    
     if(child.horizontal){
-      for(int y=-1; y<2; y++){
-        for(int x=-1; x<6; x++){
+      if(child.x < 0 || child.x >= board.width-5){
+        return true;
+      }
+      if(child.y < 0 || child.y >= board.height){
+        return true;
+      }
+    } else {
+      if(child.y < 0 || child.y >= board.height-5){
+        return true;
+      }
+      if(child.x < 0 || child.x >= board.width){
+        return true;
+      }
+    }
+    
+    if(child.horizontal){
+      for(int x = -1; x < 7; x++){
+        for(int y = -1; y < 2; y++){
           int posX = child.x + x;
           int posY = child.y + y;
           if(board.inBounds(posX, posY)){
             if(
               board.grid[posX][posY] != Cell.empty() &&
-              posX != (parent.x + x) && posY != (parent.y + y)) {
-                return true;
+              !cellBelongsToParent(board, posX, posY, parent) 
+              )
+              {
+                collision = true;
             }
-          } else {
-            return false;
           }
         }
       }
-      
-    // Now lets do the same but for Vertical equations
     } else {
-      for(int y=-1; y<6; y++){
-        for(int x=-1; x<2; x++){
+      for(int y = -1; y < 7; y++){
+        for(int x = -1; x < 2; x++){
           int posX = child.x + x;
           int posY = child.y + y;
           if(board.inBounds(posX, posY)){
             if(
-              board.grid[posX][posY] != Cell.empty() &&
-              posX != (parent.x + x) && posY != (parent.y + y)) {
-                return true;
+              board.grid[posX][posY].type != CellType.empty &&
+              !cellBelongsToParent(board, posX, posY, parent)
+              ) {
+                collision = true;
             }
-          } else {
-            return false;
           }
         }
       }
     }
+    return collision;
+  }
+  
+  static bool cellBelongsToParent(MatrixPuzzle puzzle, int x, int y, Equation parent){
+    if(parent.horizontal){
+      int posX = parent.x;
+      int posY = parent.y;
+      for(int i = 0; i < 5; i++){
+        if(posX + i == x && posY == y) return true;
+      }
+    } else {
+      int posX = parent.x;
+      int posY = parent.y;
+      for(int i = 0; i < 5; i++){
+        if(posY + i == y && posX == x) return true;
+      }
+    }
+    return false;
   }
   
   
@@ -571,11 +727,27 @@ class Equation {
   List<Cell> toCells(){
     final List<Cell> cells = [];
     cells.add(Cell.number  (data[0] as int));
-    cells.add(Cell.op(data[1] as String));
+    cells.add(Cell.op      (data[1] as String));
     cells.add(Cell.number  (data[2] as int));
     cells.add(Cell.equals  ());
     cells.add(Cell.result  (data[3] as int));
     return cells;
+  }
+  
+  void printConsole(){
+    if(horizontal) {
+      print(' Orientation: horizontal');
+    } else {
+      print( 'Orientation: Vertical');
+    }
+    
+    String eq = ' ';
+    for(final cell in data){
+      eq += cell.toString();
+    }
+    
+    print(' Equation: $eq');
+    print(' ');
   }
   
 }
