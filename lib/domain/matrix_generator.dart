@@ -4,6 +4,7 @@ import 'dart:math';
 import 'matrix_puzzle.dart';
 import 'cell.dart';
 import 'board.dart';
+import 'equation.dart';
 
 class MatrixGenerator {
   
