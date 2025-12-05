@@ -26,9 +26,9 @@ class MatrixGenerator {
       maxVal = 99;
     }
     
-    MatrixPuzzle puzzle = MatrixPuzzle(difficulty);
+    size = maxSize;
     
-    int size = maxSize;
+    MatrixPuzzle puzzle = MatrixPuzzle(size, size, difficulty);
     
     Board board = Board();
     board.setConstrains(size, maxVal);
@@ -187,8 +187,7 @@ class MatrixGenerator {
     return puzzle;
   }
   
-  
-  void boardToPuzzle(Board board, MatrixPuzzle puzzle) {
+  static void boardToPuzzle(Board board, MatrixPuzzle puzzle) {
     // Asumimos que board.grid y puzzle.grid tienen la misma dimensión.
     final int rows = board.grid.length;
     final int cols = board.grid.isNotEmpty ? board.grid[0].length : 0;
