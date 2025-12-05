@@ -29,7 +29,7 @@ class MatrixGenerator {
     
     size = maxSize;
     
-    MatrixPuzzle puzzle = MatrixPuzzle(size, size, difficulty);
+    MatrixPuzzle puzzle = MatrixPuzzle(size, size, difficulty: difficulty);
     
     Board board = Board();
     board.setConstrains(size, maxVal);
