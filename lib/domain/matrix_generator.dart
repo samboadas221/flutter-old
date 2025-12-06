@@ -38,7 +38,7 @@ class MatrixGenerator {
     // ESTA ES LA FUNCIÓN QUE DEBES CREAR!!
     boardToPuzzle(board, puzzle);
     
-    List<Equation> boardEquations = [];
+    List<PuzzleEquation> boardEquations = [];
     
     // scan horizontal
     for (int r = 0; r < puzzle.rows; r++) {
@@ -53,7 +53,7 @@ class MatrixGenerator {
           final B = puzzle.grid[c+2][r].number;
           final C = puzzle.grid[c+4][r].number;
           // asegurar que no añadimos duplicados (por si hay solapes interpretables)
-          boardEquations.add(Equation(true, c, r, [A, op, B, C]));
+          boardEquations.add(PuzzleEquation(true, c, r, [A, op, B, C]));
         }
       }
     }
@@ -69,7 +69,7 @@ class MatrixGenerator {
           final op = puzzle.grid[c][r+1].op;
           final B = puzzle.grid[c][r+2].number;
           final C = puzzle.grid[c][r+4].number;
-          boardEquations.add(Equation(false, c, r, [A, op, B, C]));
+          boardEquations.add(PuzzleEquation(false, c, r, [A, op, B, C]));
         }
       }
     }
@@ -243,4 +243,37 @@ class MatrixGenerator {
     puzzle.bankCounts = {};
   }
   
+}
+
+class PuzzleEquation {
+  bool horizontal;
+  int x, y;
+  List data; // [A, op, B, C]
+  Equation(this.horizontal, this.x, this.y, this.data);
+
+  List<int> getValuePosition(int value){
+    if(data.contains(value)){
+      if(horizontal){
+        if(data[0] == value){ return [x, y]; }
+        if(data[2] == value){ return [x+2, y]; }
+        if(data[3] == value){ return [x+4, y]; }
+      } else {
+        if(data[0] == value){ return [x, y]; }
+        if(data[2] == value){ return [x, y+2]; }
+        if(data[3] == value){ return [x, y+4]; }
+      }
+    }
+    return [-1];
+  }
+
+  List<Cell> toCells(){
+    final List<Cell> cells = [];
+    cells.add(Cell.number  (data[0] as int));
+    cells.add(Cell.op(data[1] as String));
+    cells.add(Cell.number  (data[2] as int));
+    cells.add(Cell.equals  ());
+    cells.add(Cell.result  (data[3] as int));
+    return cells;
+  }
+
 }
