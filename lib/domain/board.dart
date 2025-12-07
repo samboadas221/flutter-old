@@ -1,6 +1,7 @@
 
 import 'dart:math';
 import 'equation.dart';
+import 'equation_generator.dart';
 
 /// ========== CONFIGURACIÓN ==========
 int ROWS = 14;
@@ -118,7 +119,7 @@ class Board {
     // 1) Tablero vacío creado
   
     // 2) Generar y colocar ecuación raíz con attempts
-    Equation? root;
+    Equation root = null;
     for (int tries = 0; tries < MAX_ROOT_ATTEMPTS; tries++) {
       final orientation =
           rng.nextBool() ? Orientation.horizontal : Orientation.vertical;

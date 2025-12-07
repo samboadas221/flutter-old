@@ -10,7 +10,7 @@ class EquationGenerator {
 
   /// Genera una ecuación que tiene en tokenIndex (0/2/4) el valor fixedVal.
   /// Devuelve null si no consigue una ecuación válida en upToAttempts.
-  Equation? generateWithFixedIndex(
+  Equation generateWithFixedIndex(
       int fixedIndex, int fixedVal, Orientation orientation, Point<int> alignmentCoord,
       {int upToAttempts = CHILD_GEN_ATTEMPTS}) {
     // fixedIndex ∈ {0,2,4}
