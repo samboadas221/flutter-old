@@ -14,7 +14,7 @@ const int CHILD_GEN_ATTEMPTS = 2500; // intentos para generar un hijo que cumpla
 
 /// Tablero simple
 class Board {
-  final List<List<String>> grid;
+  List<List<String>> grid = [];
   
   bool inBounds(int r, int c) => r >= 0 && r < ROWS && c >= 0 && c < COLS;
   bool inBoundsPoint(Point<int> p) => inBounds(p.x, p.y);
@@ -46,7 +46,7 @@ class Board {
 
     // Debe haber exactamente UNA superposición con contenidos no-vacíos:
     int overlaps = 0;
-    Point<int>? overlapCoord;
+    Point<int> overlapCoord = null;
     for (int i = 0; i < childCells.length; i++) {
       final p = childCells[i];
       final existing = at(p);
