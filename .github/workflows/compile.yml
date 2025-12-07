@@ -24,7 +24,7 @@ jobs:
           echo "y" | sudo ${ANDROID_HOME}/cmdline-tools/10.0/bin/sdkmanager --sdk_root=${ANDROID_HOME} "ndk;21.4.7075529"
 
       - name: Set NDK path
-        run: echo "ndk.dir=${ANDROID_HOME}/ndk/19.4.7075529" >> android/local.properties
+        run: echo "ndk.dir=${ANDROID_HOME}/ndk/21.4.7075529" >> android/local.properties
 
       - name: Install Flutter 1.22.6
         uses: subosito/flutter-action@v2
