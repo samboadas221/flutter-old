@@ -249,7 +249,8 @@ class PuzzleEquation {
   bool horizontal;
   int x, y;
   List data; // [A, op, B, C]
-  Equation(this.horizontal, this.x, this.y, this.data);
+  
+  PuzzleEquation(this.horizontal, this.x, this.y, this.data);
 
   List<int> getValuePosition(int value){
     if(data.contains(value)){
