@@ -401,7 +401,14 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                             transformationController: _transformationController,
                             panEnabled: true,
                             scaleEnabled: true,
-                            boundaryMargin: EdgeInsets.zero, // evita que se salga visualmente
+                            
+                            boundaryMargin: EdgeInsets.only(
+                              left: 2000,
+                              right: 2000,
+                              bottom: 2000,
+                              top: 800,
+                            ),
+                            
                             minScale: 0.05,
                             maxScale: _maxInitialScale * 6.0,
                             child: _buildGrid(_logicalCellSize),
