@@ -360,53 +360,108 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         children: [
           // Bank
           _buildBank(),
-
-          // Board area: we measure available space with LayoutBuilder and compute a fitting transform.
+          
+          // --- REEMPLAZAR AQUÍ: bank container + expanded(board) + indicator ---
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // compute viewport available for the board (taking paddings into account)
-                final double viewportW = constraints.maxWidth - 16; // padding
-                final double viewportH = constraints.maxHeight - 16 - 60; // accomodate bottom instructions roughly
-
-                // compute scale to fit the logical board into viewport
-                final double contentW = puzzle.cols * _logicalCellSize;
-                final double contentH = puzzle.rows * _logicalCellSize;
-                double fitScale = min(viewportW / contentW, viewportH / contentH);
-
-                // clamp
-                fitScale = fitScale.clamp(_minInitialScale, _maxInitialScale);
-
-                // If current controller has identity (initial), set it to fit the board
-                // We'll center the board.
-                final double translateX = (viewportW - contentW * fitScale) / 2.0 + 8; // add small padding
-                final double translateY = (viewportH - contentH * fitScale) / 2.0 + 8;
-
-                final Matrix4 initial = Matrix4.identity()
-                  ..translate(translateX, translateY)
-                  ..scale(fitScale, fitScale);
-
-                // ensure the controller has this value initially (only if it's identity or different)
-                if (_transformationController.value == null || _transformationController.value == Matrix4.identity()) {
-                  _transformationController.value = initial;
-                }
-
-                // InteractiveViewer wrapper: we set constrained: false and supply boundaryMargin large enough
-                return Padding(
-                  padding: EdgeInsets.all(8),
-                  child: InteractiveViewer(
-                    transformationController: _transformationController,
-                    panEnabled: true,
-                    scaleEnabled: true,
-                    boundaryMargin: EdgeInsets.all(2000),
-                    minScale: 0.05,
-                    maxScale: _maxInitialScale * 6.0,
-                    child: _buildGrid(_logicalCellSize),
+            child: Stack(
+              children: <Widget>[
+                // 1) Tablero en el fondo (InteractiveViewer dentro de ClipRect)
+                Positioned.fill(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // viewport disponible para el tablero (consideramos padding)
+                      final double viewportW = constraints.maxWidth - 16; // margen lateral
+                      final double viewportH = constraints.maxHeight - 16; // margen vertical
+          
+                      // tamaño lógico del contenido
+                      final double contentW = puzzle.cols * _logicalCellSize;
+                      final double contentH = puzzle.rows * _logicalCellSize;
+          
+                      // escala para que el contenido quepa
+                      double fitScale = min(viewportW / contentW, viewportH / contentH);
+                      fitScale = fitScale.clamp(_minInitialScale, _maxInitialScale);
+          
+                      // traducción para centrar con un pequeño padding
+                      final double translateX = (viewportW - contentW * fitScale) / 2.0 + 8;
+                      final double translateY = (viewportH - contentH * fitScale) / 2.0 + 8;
+          
+                      final Matrix4 initial = Matrix4.identity()
+                        ..translate(translateX, translateY)
+                        ..scale(fitScale, fitScale);
+          
+                      // Inicializamos el controller si está en identidad (primer frame)
+                      // Nota: comparar matrices por identidad es aceptable para el primer ajuste.
+                      final Matrix4 current = _transformationController.value;
+                      final bool isIdentity = current == null || current == Matrix4.identity();
+                      if (isIdentity) {
+                        _transformationController.value = initial;
+                      }
+          
+                      return Padding(
+                        padding: EdgeInsets.all(8),
+                        child: ClipRect(
+                          child: InteractiveViewer(
+                            transformationController: _transformationController,
+                            panEnabled: true,
+                            scaleEnabled: true,
+                            boundaryMargin: EdgeInsets.zero, // evita que se salga visualmente
+                            minScale: 0.05,
+                            maxScale: _maxInitialScale * 6.0,
+                            child: _buildGrid(_logicalCellSize),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+          
+                // 2) Banco en la parte superior (siempre encima)
+                //    Ajusta top/left/right para controlar posición y márgenes.
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  right: 8,
+                  child: Material(
+                    // Material con elevation para que tenga sombra y se note encima del tablero
+                    color: Colors.transparent,
+                    elevation: 4.0,
+                    child: Container(
+                      // Le damos un fondo semitransparente para legibilidad si el tablero pasa por debajo
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.92),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: _buildBank(),
+                    ),
+                  ),
+                ),
+          
+                // 3) Indicador inferior (texto), también encima del tablero
+                Positioned(
+                  bottom: 8,
+                  left: 8,
+                  right: 8,
+                  child: Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                    ),
+                    child: Text(
+                      selectedNumber == null
+                          ? "Toca un número del banco para seleccionarlo\n(o toca una casilla con número para borrarlo)"
+                          : "Coloca el número: $selectedNumber",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
+
+
 
           // Indicador de número seleccionado
           Container(
