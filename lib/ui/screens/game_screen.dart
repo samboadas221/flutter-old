@@ -358,10 +358,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       ),
       body: Column(
         children: [
-          // Bank
-          _buildBank(),
           
-          // --- REEMPLAZAR AQUÍ: bank container + expanded(board) + indicator ---
           Expanded(
             child: Stack(
               children: <Widget>[
@@ -448,30 +445,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
                     ),
-                    child: Text(
-                      selectedNumber == null
-                          ? "Toca un número del banco para seleccionarlo\n(o toca una casilla con número para borrarlo)"
-                          : "Coloca el número: $selectedNumber",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                    ),
                   ),
                 ),
               ],
-            ),
-          ),
-
-
-
-          // Indicador de número seleccionado
-          Container(
-            padding: EdgeInsets.all(12),
-            child: Text(
-              selectedNumber == null
-                  ? "Toca un número del banco para seleccionarlo\n(o toca una casilla con número para borrarlo)"
-                  : "Coloca el número: $selectedNumber",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             ),
           ),
         ],
@@ -493,7 +469,7 @@ class WinDialog extends StatelessWidget {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('¡Has completado el puzzle perfectamente!', textAlign: TextAlign.center),
+          Text('¡Has completado el Puzzle!', textAlign: TextAlign.center),
           SizedBox(height: 20),
           Confetti(),
         ],
